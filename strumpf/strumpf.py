@@ -61,6 +61,12 @@ def set_config(config):
 def get_config():
     return _CONFIG
 
+def get_limit_in_bytes():
+    limit = _CONFIG['file_size_limit_in_mb']
+    return int(limit) * 1000
+
+def get_local_resource_dir():
+    return _CONFIG['local_resource_folder']
 
 def get_context_from_config():
     local_resource_folder = _CONFIG['local_resource_folder']
@@ -75,3 +81,38 @@ def validate_config(config=None):
 def _get_all_contexts():
     c = os.listdir(_BASE_DIR)
     return [x for x in c if x.startswith('strumpf')]
+
+
+def get_large_files(relative_path=None):
+    large_files = []
+    local_dir = get_local_resource_dir()
+    if relative_path:
+        local_dir = os.path.join(local_dir, relative_path)
+    
+    limit = get_limit_in_bytes()
+    for path, _, filenames in os.walk(local_dir):
+        for name in filenames:
+            full_path = os.path.join(path, name)
+            if  os.path.getsize(full_path) > limit:
+                large_files.append(full_path)
+    return large_files
+
+
+def get_tracked_files(relative_path=None):
+    tracked_files = []
+    local_dir = get_local_resource_dir()
+    if relative_path:
+        local_dir = os.path.join(local_dir, relative_path)
+    for path, _, filenames in os.walk(local_dir):
+        for name in filenames:
+            full_path = os.path.join(path, name)
+            if full_path.endswith(".resource_reference"):
+                original_file = full_path.replace(".resource_reference", "")
+                tracked_files.append(original_file)
+    return tracked_files
+
+
+def is_file(path):
+    local_dir = get_local_resource_dir()
+    full_path = os.path.join(local_dir, path)
+    return os.path.isfile(full_path)

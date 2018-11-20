@@ -28,19 +28,19 @@ import click
 from click.exceptions import ClickException
 from dateutil import parser
 
-from .strumpf import set_config, get_config, validate_config
-from .strumpf import get_context_from_config
+import strumpf
 from .utils import set_context
 
 if sys.version_info[0] == 2:
     input = raw_input
 
 
-_CONFIG = get_config()
+_CONFIG = strumpf.get_config()
 AZURE_ACCOUNT_NAME = _CONFIG['azure_account_name']
 FILE_SIZE_LIMIT_IN_MB = _CONFIG['file_size_limit_in_mb']
 CONTAINER_NAME = _CONFIG['container_name']
 
+_STAGED_FILES = []
 
 def to_bool(string):
     if type(string) is bool:
@@ -55,7 +55,7 @@ class CLI(object):
         self.command = None
 
     def command_dispatcher(self, args=None):
-        desc = ('Strumpf, Skymind test resource management for paunchy files.\n')
+        desc = ('Strumpf, Skymind test resource upload management for paunchy files.\n')
         parser = argparse.ArgumentParser(description=desc)
         parser.add_argument(
             '-v', '--version', action='version',
@@ -66,8 +66,11 @@ class CLI(object):
         subparsers = parser.add_subparsers(title='subcommands', dest='command')
         subparsers.add_parser('configure', help='Configure strumpf')
         subparsers.add_parser('status', help='Get strumpf status')
-        subparsers.add_parser('add', help='Add files to strumpf tracking system')
+        file_add_parser = subparsers.add_parser('add', help='Add files to strumpf tracking system')
         subparsers.add_parser('upload', help='Upload files to remote source')
+
+
+        file_add_parser.add_argument('-p', '--path', help='Path or file to add to upload.')
 
         argcomplete.autocomplete(parser)
         args = parser.parse_args(args)
@@ -88,7 +91,7 @@ class CLI(object):
             return
 
         if self.command == 'add':
-            self.add()
+            self.add((self.var_args['path']))
             return
 
         if self.command == 'upload':
@@ -141,7 +144,7 @@ class CLI(object):
             'local_resource_folder': local_resource_folder
         }
 
-        validate_config(cli_out)
+        strumpf.validate_config(cli_out)
         formatted_json = json.dumps(cli_out, sort_keys=False, indent=2)
 
         click.echo("\nThis is your current settings file " +
@@ -155,17 +158,37 @@ class CLI(object):
                 "" + click.style("Please initialize strumpf once again", fg="red", bold=True))
             return
 
-        set_config(cli_out)
-        set_context(get_context_from_config())
+        strumpf.set_config(cli_out)
+        set_context(strumpf.get_context_from_config())
 
 
     def status(self):
-        # TODO: list all large files in resource folder
-        pass
+        large_files = strumpf.get_large_files()
+        tracked_files = strumpf.get_tracked_files()
+        modified_files = [f for f in large_files if f in tracked_files]
+        untracked_files = [f for f in large_files if f not in tracked_files]
+
+        if large_files:
+            if modified_files:
+                click.echo('\n Changes not staged for upload:')
+                click.echo(' (use "strumpf add <file>..." to update files)\n')
+                for mod in modified_files:
+                    click.echo('' + click.style('        modified:    ' + mod, fg="red", bold=False))
+                click.echo('\n')
+            if untracked_files:
+                click.echo(' Untracked large files:')
+                click.echo(' (use "strumpf add <file>..." to include in what will be committed)\n')
+                for untracked in untracked_files:
+                    click.echo("        " + click.style(untracked, fg="red", bold=False))
+                click.echo('\n')
+        else:
+            click.echo(' No large files available for upload')
     
-    def add(self):
-        # single file and "."
-        pass
+    def add(self, path):
+        if strumpf.is_file(path):
+            strumpf.add_file(path)
+        else:
+            strumpf.add_path(path)
 
     def upload(self):
         # compress file
