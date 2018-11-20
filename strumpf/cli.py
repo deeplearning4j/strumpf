@@ -95,6 +95,13 @@ class CLI(object):
             self.upload()
             return
 
+        if self.command == 'download':
+            self.download()
+            return
+        
+        if self.command == 'bulk_download':
+            self.bulk_download()
+
     def configure(self):
 
         click.echo(click.style(u"""\n███████╗████████╗██████╗ ██╗   ██╗███╗   ███╗██████╗ ███████╗
@@ -153,12 +160,26 @@ class CLI(object):
 
 
     def status(self):
+        # TODO: list all large files in resource folder
         pass
     
     def add(self):
+        # single file and "."
         pass
 
     def upload(self):
+        # compress file
+        # compute md5 hash of original and compressed file
+        # create .resource file with file name and hashes
+        # upload added files using azure cli
+        pass
+
+    def download(self):
+        # TODO: download individual files
+        pass
+    
+    def bulk_download(self):
+        # TODO: bulk download all remote resources
         pass
         
 
