@@ -2,21 +2,22 @@ from setuptools import setup
 from setuptools import find_packages
 
 setup(
-    name='pydl4j',
-    version='0.1.3',
+    name='strumpf',
+    version='0.1',
     packages=find_packages(),
-    install_requires=['Cython', 'jnius', 'requests',
-                      'click', 'argcomplete', 'python-dateutil'],
+    install_requires=['azure', 'requests', 'click', 'argcomplete'],
     extras_require={
         'tests': ['pytest', 'pytest-pep8', 'pytest-cov']
     },
     include_package_data=True,
     license='Apache',
-    description='Java dependency management for Python projects using DL4J',
-    url='https://github.com/deeplearning4j/pydl4j',
+    author='Max Pumperla',
+    author_email='max@skymind.io',
+    description='Skymind test resource management for paunchy files',
+    url='https://github.com/deeplearning4j/strumpf',
     entry_points={
         'console_scripts': [
-            'pydl4j=pydl4j.cli:handle'
+            'strumpf=strumpf.cli:handle'
         ]
     },
     classifiers=[

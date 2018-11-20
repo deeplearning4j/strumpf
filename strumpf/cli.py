@@ -29,20 +29,17 @@ from click.exceptions import ClickException
 from dateutil import parser
 
 from .strumpf import set_config, get_config, validate_config
+from .strumpf import get_context_from_config
+from .utils import set_context
 
 if sys.version_info[0] == 2:
     input = raw_input
 
 
 _CONFIG = get_config()
-
-DEFAULT_DL4J_VERSION = _CONFIG['dl4j_version']
-DEFAULT_BACKEND = _CONFIG['nd4j_backend']
-DEFAULT_DATAVEC = _CONFIG['datavec']
-DEFAULT_SPARK = _CONFIG['spark']
-DEFAULT_SPARK_MAJOR = _CONFIG['spark_version']
-DEFAULT_SCALA_VERSION = _CONFIG['scala_version']
-DEFAULT_SPARK_DETAILS = 'y'
+AZURE_ACCOUNT_NAME = _CONFIG['azure_account_name']
+FILE_SIZE_LIMIT_IN_MB = _CONFIG['file_size_limit_in_mb']
+CONTAINER_NAME = _CONFIG['container_name']
 
 
 def to_bool(string):
@@ -58,17 +55,19 @@ class CLI(object):
         self.command = None
 
     def command_dispatcher(self, args=None):
-        desc = ('pydl4j,  a system to manage your DL4J dependencies from Python.\n')
+        desc = ('Strumpf, Skymind test resource management for paunchy files.\n')
         parser = argparse.ArgumentParser(description=desc)
         parser.add_argument(
             '-v', '--version', action='version',
-            version=pkg_resources.get_distribution("pydl4j").version,
-            help='Print pydl4j version'
+            version=pkg_resources.get_distribution("strumpf").version,
+            help='Print strumpf version'
         )
 
         subparsers = parser.add_subparsers(title='subcommands', dest='command')
-        subparsers.add_parser('init', help='Initialize pydl4j')
-        subparsers.add_parser('install', help='Install jars for pydl4j')
+        subparsers.add_parser('configure', help='Configure strumpf')
+        subparsers.add_parser('status', help='Get strumpf status')
+        subparsers.add_parser('add', help='Add files to strumpf tracking system')
+        subparsers.add_parser('upload', help='Upload files to remote source')
 
         argcomplete.autocomplete(parser)
         args = parser.parse_args(args)
@@ -80,15 +79,23 @@ class CLI(object):
 
         self.command = args.command
 
-        if self.command == 'init':
-            self.init()
+        if self.command == 'configure':
+            self.configure()
             return
 
-        if self.command == 'install':
-            self.install()
+        if self.command == 'status':
+            self.status()
             return
 
-    def init(self):
+        if self.command == 'add':
+            self.add()
+            return
+
+        if self.command == 'upload':
+            self.upload()
+            return
+
+    def configure(self):
 
         click.echo(click.style(u"""\n███████╗████████╗██████╗ ██╗   ██╗███╗   ███╗██████╗ ███████╗
 ██╔════╝╚══██╔══╝██╔══██╗██║   ██║████╗ ████║██╔══██╗██╔════╝
@@ -97,53 +104,34 @@ class CLI(object):
 ███████║   ██║   ██║  ██║╚██████╔╝██║ ╚═╝ ██║██║     ██║     
 ╚══════╝   ╚═╝   ╚═╝  ╚═╝ ╚═════╝ ╚═╝     ╚═╝╚═╝     ╚═╝   \n""", fg='blue', bold=True))
 
-        click.echo(click.style("pydl4j", bold=True) +
-                   " is a system to manage your DL4J dependencies from Python!\n")
+        click.echo(click.style("strumpf", bold=True) +
+                   " is Skymind's test resource management tool for exceedingly large files!\n")
 
-        # DL4J version
-        dl4j_version = input("Which DL4J version do you want to use for your Python projects? (default '%s'): " %
-                             DEFAULT_DL4J_VERSION) or DEFAULT_DL4J_VERSION
-        # TODO: check if input is valid
+        # Storage account name
+        account_name = input("Specify tour Azure storage account name (default '%s'): " %
+                             AZURE_ACCOUNT_NAME) or AZURE_ACCOUNT_NAME
 
-        # ND4J backend
-        backend = input("Which backend would you like to use ('cpu' or 'gpu')? (default '%s'): " %
-                        DEFAULT_BACKEND) or DEFAULT_BACKEND
-        backend = backend.lower()
+        # Storage account key
+        account_key = input("Please specify the respective account key: ")
 
-        # DataVec usage
-        datavec = input(
-            "Do you need DL4J DataVec for ETL? (default 'y') [y/n]: ") or DEFAULT_DATAVEC
-        datavec = to_bool(datavec)
+        # Container name
+        container_name = input("Which blob storage container should be used (default '%s'): " %
+                             CONTAINER_NAME) or CONTAINER_NAME
 
-        # DL4J core usage
-        DEFAULT_DL4J = 'y'
-        dl4j_core = input(
-            "Do you want to work with DeepLearning4J from Python? (default 'y') [y/n]: ") or DEFAULT_DL4J
-        dl4j_core = to_bool(dl4j_core)
+        # File size limit
+        file_limit = input("Strumpf uploads large files to Azure instead of checking them into git," +
+                            "from which file size in MB on should we upload your files (default '%s' MB): " %
+                             FILE_SIZE_LIMIT_IN_MB) or FILE_SIZE_LIMIT_IN_MB
 
-        # Spark
-        spark = input(
-            "Do you need Spark for distributed computation in your application? (default 'y') [y/n]: ") or DEFAULT_SPARK
-        spark = to_bool(spark)
-        spark_version = DEFAULT_SPARK_MAJOR
-        scala_version = DEFAULT_SCALA_VERSION
-        if spark:
-            spark_details = input("We use Spark {} and Scala {} by default, is this OK for you? (default 'y') [y/n]: ".format(DEFAULT_SPARK_MAJOR,
-                                                                                                                              DEFAULT_SCALA_VERSION)) or DEFAULT_SPARK_DETAILS
-            if not spark_details[0] in ["Y", "y"]:
-                spark_version = input("Which which major Spark release would you like to use? (default '%s'): " %
-                                      DEFAULT_SPARK_MAJOR) or DEFAULT_SPARK_MAJOR
-                scala_version = input("Which Scala version would you like to use? (default '%s'): " %
-                                      DEFAULT_SCALA_VERSION) or DEFAULT_SCALA_VERSION
+        # Local resource folder
+        local_resource_folder = input("Please specify the full path to the resource folder you want to track: ")
 
         cli_out = {
-            'dl4j_version': dl4j_version,
-            'nd4j_backend': backend,
-            'dl4j_core': dl4j_core,
-            'datavec': datavec,
-            'spark': spark,
-            'spark_version': spark_version,
-            'scala_version': scala_version
+            'azure_account_name': account_name,
+            'azure_account_key': account_key,
+            'file_size_limit_in_mb': file_limit,
+            'container_name': container_name,
+            'local_resource_folder': local_resource_folder
         }
 
         validate_config(cli_out)
@@ -157,34 +145,22 @@ class CLI(object):
             "\nDoes this look good? (default 'y') [y/n]: ") or 'yes'
         if not to_bool(confirm):
             click.echo(
-                "" + click.style("Please initialize pydl4j once again", fg="red", bold=True))
+                "" + click.style("Please initialize strumpf once again", fg="red", bold=True))
             return
 
         set_config(cli_out)
+        set_context(get_context_from_config())
 
-    def install(self):
-        if is_docker_available():
-            use_docker = input("Docker available on your system. Would you like to use docker for installation> (default 'y')[y/n]: ") or 'yes'
-            if to_bool(use_docker):
-                click.echo(click.style(
-                                       "Docker is running, starting installation.", fg="green", bold=True))
-                click.echo(click.style("========\n\nNote that this might take some time to complete.\n" +
-                                       "We will first pull a docker container with Maven, then install all dependencies selected with 'pydl4j init'.\n" +
-                                       "After completion you can start using DL4J from Python.\n\n========", fg="green", bold=False))
-                _maven_build(use_docker=True)
-            else:
-                click.echo(click.style("========\n\nNote that this might take some time to complete.\n" +
-                                       "After completion you can start using DL4J from Python.\n\n========", fg="green", bold=False))
 
-                _maven_build(use_docker=False)
-        else:
-            click.echo(
-                       "" + click.style("Could not detect docker on your system.", fg="red", bold=True))
-            click.echo(click.style("========\n\nNote that this might take some time to complete.\n" +
-                                   "After completion you can start using DL4J from Python.\n\n========", fg="green", bold=False))
+    def status(self):
+        pass
+    
+    def add(self):
+        pass
 
-            _maven_build(use_docker=False)
-
+    def upload(self):
+        pass
+        
 
 def handle():
     try:

@@ -29,52 +29,15 @@ _CONTEXT_DIR = None
 _USER_PATH = os.path.expanduser('~')
 _DL4J_DIR = os.path.join(_USER_PATH, '.deeplearning4j')
 mkdir(_DL4J_DIR)
-_MY_DIR = os.path.join(_DL4J_DIR, 'strumpf')
-mkdir(_MY_DIR)
-_URLS_FILE = os.path.join(_MY_DIR, 'urls.json')
-
-if os.path.isfile(_URLS_FILE):
-    with open(_URLS_FILE, 'r') as f:
-        _URLS = json.load(f)
-else:
-    _URLS = {}
-
-
-def _write_urls():
-    with open(_URLS_FILE, 'w') as f:
-        json.dump(_URLS, f)
-
-
-_cache = {}
-
-
-def _read(url):
-    text = _cache.get(url)
-    if text is None:
-        text = requests.get(url).text
-        if not text:
-            raise Exception('Empty response. Check connectivity.')
-        _cache[url] = text
-    return text
-
-
-def _parse_contents(text):
-    contents = text.split('<pre id="contents">')[1]
-    contents = contents.split('</pre>')[0]
-    contents = contents.split('<a href="')
-    _ = contents.pop(0)
-    link_to_parent = contents.pop(0)
-    contents = list(map(lambda x: x.split('"')[0], contents))
-    contents = [c[:-1]
-                for c in contents if c[-1] == '/']  # removes meta data files
-    return contents
+_BASE_DIR = os.path.join(_DL4J_DIR, 'strumpf')
+mkdir(_BASE_DIR)
 
 
 def check(f):
     def wrapper(*args, **kwargs):
         if _CONTEXT_NAME is None:
             raise Exception(
-                'Context not set! Set context using pydl4j.set_context()')
+                'Context not set! Set context using strumpf.set_context()')
         mkdir(_CONTEXT_DIR)
         return f(*args, **kwargs)
     return wrapper
@@ -87,7 +50,7 @@ def set_context(name):
     if name is None:
         _CONTEXT_DIR = None
     else:
-        _CONTEXT_DIR = os.path.join(_MY_DIR, name)
+        _CONTEXT_DIR = os.path.join(_BASE_DIR, name)
         mkdir(_CONTEXT_DIR)
 
 
