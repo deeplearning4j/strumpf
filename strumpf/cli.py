@@ -35,12 +35,6 @@ if sys.version_info[0] == 2:
     input = raw_input
 
 
-_CONFIG = strumpf.get_config()
-AZURE_ACCOUNT_NAME = _CONFIG['azure_account_name']
-FILE_SIZE_LIMIT_IN_MB = _CONFIG['file_size_limit_in_mb']
-CONTAINER_NAME = _CONFIG['container_name']
-
-
 def to_bool(string):
     if type(string) is bool:
         return string
@@ -52,6 +46,12 @@ class CLI(object):
     def __init__(self):
         self.var_args = None
         self.command = None
+
+        self.strumpf = strumpf.Strumpf()
+        self.config = self.strumpf.get_config()
+        self.default_account_name = self.config['azure_account_name']
+        self.default_file_size_in_mb = self.config['file_size_limit_in_mb']
+        self.default_container_name = self.config['container_name']
 
     def command_dispatcher(self, args=None):
         desc = ('Strumpf, Skymind test resource upload management for paunchy files.\n')
@@ -66,10 +66,13 @@ class CLI(object):
         subparsers.add_parser('configure', help='Configure strumpf')
         subparsers.add_parser('status', help='Get strumpf status')
         file_add_parser = subparsers.add_parser('add', help='Add files to strumpf tracking system')
+        file_add_parser.add_argument('-p', '--path', help='Path or file to add to upload.')
+
         subparsers.add_parser('upload', help='Upload files to remote source')
 
+        download_parser = subparsers.add_parser('download', help='Download file from remote source')
+        download_parser.add_argument('-f', '--file', help='File to download.')
 
-        file_add_parser.add_argument('-p', '--path', help='Path or file to add to upload.')
 
         argcomplete.autocomplete(parser)
         args = parser.parse_args(args)
@@ -90,7 +93,7 @@ class CLI(object):
             return
 
         if self.command == 'add':
-            self.add((self.var_args['path']))
+            self.add(self.var_args['path'])
             return
 
         if self.command == 'upload':
@@ -98,7 +101,7 @@ class CLI(object):
             return
 
         if self.command == 'download':
-            self.download()
+            self.download(self.var_args['file'])
             return
         
         if self.command == 'bulk_download':
@@ -118,19 +121,19 @@ class CLI(object):
 
         # Storage account name
         account_name = input("Specify tour Azure storage account name (default '%s'): " %
-                             AZURE_ACCOUNT_NAME) or AZURE_ACCOUNT_NAME
+                             self.default_account_name) or self.default_account_name
 
         # Storage account key
         account_key = input("Please specify the respective account key: ")
 
         # Container name
         container_name = input("Which blob storage container should be used (default '%s'): " %
-                             CONTAINER_NAME) or CONTAINER_NAME
+                             self.default_container_name) or self.default_container_name
 
         # File size limit
         file_limit = input("Strumpf uploads large files to Azure instead of checking them into git," +
                             "from which file size in MB on should we upload your files (default '%s' MB): " %
-                             FILE_SIZE_LIMIT_IN_MB) or FILE_SIZE_LIMIT_IN_MB
+                             self.default_file_size_in_mb) or self.default_file_size_in_mb
 
         # Local resource folder
         local_resource_folder = input("Please specify the full path to the resource folder you want to track: ")
@@ -143,7 +146,7 @@ class CLI(object):
             'local_resource_folder': local_resource_folder
         }
 
-        strumpf.validate_config(cli_out)
+        self.strumpf.validate_config(cli_out)
         formatted_json = json.dumps(cli_out, sort_keys=False, indent=2)
 
         click.echo("\nThis is your current settings file " +
@@ -157,14 +160,14 @@ class CLI(object):
                 "" + click.style("Please initialize strumpf once again", fg="red", bold=True))
             return
 
-        strumpf.set_config(cli_out)
-        set_context(strumpf.get_context_from_config())
+        self.strumpf.set_config(cli_out)
+        set_context(self.strumpf.get_context_from_config())
 
 
     def status(self):
-        large_files = strumpf.get_large_files()
-        tracked_files = strumpf.get_tracked_files()
-        staged_files = strumpf.get_staged_files()
+        large_files = self.strumpf.get_large_files()
+        tracked_files = self.strumpf.get_tracked_files()
+        staged_files = self.strumpf.get_staged_files()
 
         modified_files = [f for f in large_files if f in tracked_files]
         untracked_files = [f for f in large_files if f not in tracked_files]
@@ -194,25 +197,17 @@ class CLI(object):
             click.echo(' No large files available for upload')
     
     def add(self, path):
-        if strumpf.is_file(path):
-            strumpf.add_file(path)
+        if self.strumpf.is_file(path):
+            self.strumpf.add_file(path)
         else:
-            strumpf.add_path(path)
+            self.strumpf.add_path(path)
 
     def upload(self):
-        strumpf.compress_staged_files()
-        strumpf.compute_and_store_hashes()
-        strumpf.upload_compressed_files()
-        strumpf.cache_and_delete()
-        strumpf.clear_staging()
-        
-        # compress staged files
-        # compute md5 hash of original and compressed file
-        # create .resource_ file with file name and hashes as json
-        # upload added files using azure cli
-        # delete files locally (ask user to confirm) OR move to cache (with hashes!)
-        # clear staging config
-        pass
+        self.strumpf.compress_staged_files()
+        self.strumpf.compute_and_store_hashes()
+        self.strumpf.upload_compressed_files()
+        self.strumpf.cache_and_delete()
+        self.strumpf.clear_staging()
 
     def download(self, file):
         # TODO: download individual files
@@ -234,7 +229,7 @@ def handle():
         sys.exit()
     except Exception as e:
         click.echo(click.style("Error: ", fg='red', bold=True))
-        traceback.print_exc()
+        traceback.print_exc(e)
         sys.exit()
 
 

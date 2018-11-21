@@ -27,6 +27,29 @@ import hashlib
 def target_dir():
     return get_dir()
 
+
+def compute_and_store_hash(file_name):
+    f_hash = hash_bytestr_iter(file_as_blockiter(open(file_name, 'rb')), hashlib.sha256())
+    gzip_hash = hash_bytestr_iter(file_as_blockiter(open(file_name + '.gz', 'rb')), hashlib.sha256())
+    hashes = {file_name + '_hash': f_hash, file_name + '_compressed_hash': gzip_hash}
+    with open(file_name + '.resource_reference') as ref:
+        json.dump(hashes, ref)
+
+
+def hash_bytestr_iter(bytesiter, hasher, ashexstr=False):
+    for block in bytesiter:
+        hasher.update(block)
+    return (hasher.hexdigest() if ashexstr else hasher.digest())
+
+
+def file_as_blockiter(afile, blocksize=65536):
+    with afile:
+        block = afile.read(blocksize)
+        while len(block) > 0:
+            yield block
+            block = afile.read(blocksize)
+
+
 class Strumpf:
     
     def __init__(self):
@@ -168,26 +191,11 @@ class Strumpf:
         for f in files:
             compute_and_store_hash(f)
 
+    def upload_compressed_files(self):
+        pass
+    
+    def cache_and_delete(self):
+        pass
 
-def compute_and_store_hash(file_name):
-    f_hash = hash_bytestr_iter(file_as_blockiter(open(file_name, 'rb')), hashlib.sha256())
-    gzip_hash = hash_bytestr_iter(file_as_blockiter(open(file_name + '.gz', 'rb')), hashlib.sha256())
-    hashes = {file_name + '_hash': f_hash, file_name + '_compressed_hash': gzip_hash}
-    with open(file_name + '.resource_reference') as ref:
-        json.dump(hashes, ref)
-
-
-def hash_bytestr_iter(bytesiter, hasher, ashexstr=False):
-    for block in bytesiter:
-        hasher.update(block)
-    return (hasher.hexdigest() if ashexstr else hasher.digest())
-
-
-def file_as_blockiter(afile, blocksize=65536):
-    with afile:
-        block = afile.read(blocksize)
-        while len(block) > 0:
-            yield block
-            block = afile.read(blocksize)
-
-
+    def clear_staging(self):
+        pass
