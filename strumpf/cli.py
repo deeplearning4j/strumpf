@@ -54,7 +54,7 @@ class CLI(object):
         self.default_container_name = self.config['container_name']
 
     def command_dispatcher(self, args=None):
-        desc = ('Strumpf, Skymind test resource upload management for paunchy files.\n')
+        desc = ('Strumpf, Skymind Test Resource Upload Management for Paunchy Files.\n')
         parser = argparse.ArgumentParser(description=desc)
         parser.add_argument(
             '-v', '--version', action='version',
@@ -106,6 +106,8 @@ class CLI(object):
         
         if self.command == 'bulk_download':
             self.bulk_download()
+
+        # TODO: strumpf reset
 
     def configure(self):
 
