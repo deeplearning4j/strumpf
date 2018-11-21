@@ -40,7 +40,6 @@ AZURE_ACCOUNT_NAME = _CONFIG['azure_account_name']
 FILE_SIZE_LIMIT_IN_MB = _CONFIG['file_size_limit_in_mb']
 CONTAINER_NAME = _CONFIG['container_name']
 
-_STAGED_FILES = []
 
 def to_bool(string):
     if type(string) is bool:
@@ -165,11 +164,21 @@ class CLI(object):
     def status(self):
         large_files = strumpf.get_large_files()
         tracked_files = strumpf.get_tracked_files()
+        staged_files = strumpf.get_staged_files()
+
         modified_files = [f for f in large_files if f in tracked_files]
         untracked_files = [f for f in large_files if f not in tracked_files]
+        modified_unstaged = [f for f in modified_files if f not in staged_files]
 
         if large_files:
-            if modified_files:
+            if staged_files:
+                click.echo('\n Changes to be uploaded:')
+                click.echo(' (use "strumpf reset <file>..." to unstage files)\n')
+                for stage in staged_files:
+                    click.echo('' + click.style('        modified:    ' + stage, fg="green", bold=False))
+                click.echo('\n')
+
+            if modified_unstaged:
                 click.echo('\n Changes not staged for upload:')
                 click.echo(' (use "strumpf add <file>..." to update files)\n')
                 for mod in modified_files:
@@ -191,18 +200,29 @@ class CLI(object):
             strumpf.add_path(path)
 
     def upload(self):
-        # compress file
+        strumpf.compress_staged_files()
+        strumpf.compute_and_store_hashes()
+        strumpf.upload_compressed_files()
+        strumpf.cache_and_delete()
+        strumpf.clear_staging()
+        
+        # compress staged files
         # compute md5 hash of original and compressed file
-        # create .resource file with file name and hashes
+        # create .resource_ file with file name and hashes as json
         # upload added files using azure cli
+        # delete files locally (ask user to confirm) OR move to cache (with hashes!)
+        # clear staging config
         pass
 
-    def download(self):
+    def download(self, file):
         # TODO: download individual files
+        # if hash already exists in cache, don't download again
+        # if hash does not exist of deviates, download and re-compute hash
         pass
     
     def bulk_download(self):
-        # TODO: bulk download all remote resources
+        # TODO: bulk download all remote resources and update hashes
+        # i.e. force update
         pass
         
 
