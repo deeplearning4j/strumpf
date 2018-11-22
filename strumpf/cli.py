@@ -171,10 +171,11 @@ class CLI(object):
         tracked_files = self.strumpf.get_tracked_files()
         staged_files = self.strumpf.get_staged_files()
 
-        modified_files = [f for f in large_files if f in tracked_files]
-        untracked_files = [f for f in large_files if f not in tracked_files]
-        modified_unstaged = [f for f in modified_files if f not in staged_files]
+        modified_files = [f for f in large_files if f[0] in tracked_files]
+        untracked_files = [f for f in large_files if f[0] not in tracked_files]
+        modified_unstaged = [f for f in modified_files if f[0] not in staged_files]
 
+        # TODO: add file size to output
         if large_files:
             if staged_files:
                 click.echo('\n Changes to be uploaded:')
@@ -187,13 +188,16 @@ class CLI(object):
                 click.echo('\n Changes not staged for upload:')
                 click.echo(' (use "strumpf add <file>..." to update files)\n')
                 for mod in modified_files:
-                    click.echo('' + click.style('        modified:    ' + mod, fg="red", bold=False))
+                    click.echo('' + click.style('        modified:    ' + mod[0] + 
+                               '  (file size: ' + str(int(mod[1])/1000000) + ' mb)', fg="red", bold=False))
                 click.echo('\n')
             if untracked_files:
                 click.echo(' Untracked large files:')
                 click.echo(' (use "strumpf add <file>..." to include in what will be committed)\n')
                 for untracked in untracked_files:
-                    click.echo("        " + click.style(untracked, fg="red", bold=False))
+                    print(untracked)
+                    click.echo("        " + click.style(untracked[0] + 
+                               '  (file size: ' + str(int(untracked[1])/1000000) + ' mb)', fg="red", bold=False))
                 click.echo('\n')
         else:
             click.echo(' No large files available for upload')

@@ -113,7 +113,7 @@ class Strumpf:
 
     def get_limit_in_bytes(self):
         limit = self.config['file_size_limit_in_mb']
-        return int(limit) * 1000
+        return int(limit) * 1000 * 1000
 
     def get_local_resource_dir(self):
         return self.config['local_resource_folder']
@@ -143,8 +143,9 @@ class Strumpf:
         for path, _, filenames in os.walk(local_dir):
             for name in filenames:
                 full_path = os.path.join(path, name)
-                if  os.path.getsize(full_path) > limit:
-                    large_files.append(full_path)
+                size = os.path.getsize(full_path)
+                if size > limit:
+                    large_files.append((full_path, size))
         return large_files
 
 
