@@ -17,8 +17,10 @@ import sys
 reload(sys)
 sys.setdefaultencoding("ISO-8859-1")
 
+if sys.version_info[0] == 2:
+    input = raw_input
 
-from .utils import _BASE_DIR, get_dir
+from .utils import _BASE_DIR
 import platform
 import os
 import warnings
@@ -26,10 +28,7 @@ import os
 import json
 import gzip
 import hashlib
-import codecs
-
-def target_dir():
-    return get_dir()
+from .storage import Service
 
 
 def compute_and_store_hash(file_name):
@@ -57,6 +56,12 @@ def file_as_blockiter(afile, blocksize=65536):
             block = afile.read(blocksize)
 
 
+def to_bool(string):
+    if type(string) is bool:
+        return string
+    return True if string[0] in ["Y", "y"] else False
+
+
 class Strumpf:
     
     def __init__(self):
@@ -67,6 +72,7 @@ class Strumpf:
             'azure_account_name': 'dl4jtestresources',
             'file_size_limit_in_mb': '2',
             'container_name': 'resources',
+            'cache_directory': _BASE_DIR
         }
         self.service = None
 
@@ -201,13 +207,13 @@ class Strumpf:
     def compress_staged_files(self):
         files = self.get_staged_files()
         for f in files:
-            with open(f) as source, gzip.open(f + '.gz', 'wb') as dest:        
+            with open(f) as source, gzip.open(f + '.gzx', 'wb') as dest:        
                 dest.write(source.read())
 
     def decompress_file(self, file_name, clean=True):
-        if not file_name.endswith('.gz'):
-            raise ValueError('File name is expected to have ".gz" signature.')
-        with open(file_name.strip('.gz'), 'wb') as dest, gzip.open(file_name, 'rb') as source:
+        if not file_name.endswith('.gzx'):
+            raise ValueError('File name is expected to have ".gzx" signature.')
+        with open(file_name.strip('.gzx'), 'wb') as dest, gzip.open(file_name, 'rb') as source:
             dest.write(source.read())
 
     def compute_and_store_hashes(self):
@@ -215,11 +221,54 @@ class Strumpf:
         for f in files:
             compute_and_store_hash(f)
 
+    def service_from_config(self):
+        name = self.config['azure_account_name']
+        key = self.config['azure_account_key']
+        container = self.config['container_name']
+        return Service(name, key, container)
+
     def upload_compressed_files(self):
-        pass
-    
+        num_staged_files = len(self.get_staged_files())
+        container = self.config['container_name']
+        print('>>> Starting upload to Azure blob storage')
+        print('>>> A total of {} large files will be uploaded to container "{}"'.format(num_staged_files, container))
+        if self.service is None:
+            self.service = self.service_from_config()
+
+        blobs = self.service.get_all_blob_names()
+        files = self.get_staged_files()
+        local_dir = self.get_local_resource_dir()
+
+        for path, _, file_names in os.walk(local_dir):
+            for name in file_names:
+                if name.endswith('.gzx'):
+                    full_path = os.path.join(path, name)
+                    upload = True
+                    if name in blobs:
+                        confirm = input("File {} already available on Azure,".format(name) + \
+                                        "do you want to override it? (default 'n') [y/n]: ") or 'yes'
+                        upload = to_bool(confirm)
+                    if upload:
+                        print('   >>> uploading file {}'.format(full_path))
+                        self.service.upload_blob(name, full_path)
+        print('>>> Upload finished')
+        
     def cache_and_delete(self):
-        pass
+        staged = self.get_staged_files()
+        local_dir = self.get_local_resource_dir()
+        cache_dir = self.config['cache_directory']
+        for source_dir, dirs, files in os.walk(local_dir):
+            dest_dir = source_dir.replace(local_dir, cache_dir)
+            if not os.path.exists(dest_dir):
+                print(dest_dir)
+                os.mkdir(dest_dir)
+            for file_name in files:
+                src_file = os.path.join(source_dir, file_name)
+                dst_file = os.path.join(dest_dir, file_name)
+                if src_file in staged:
+                    os.rename(src_file, dst_file)
+                    os.remove(src_file + '.gzx')
+                    os.copy(src_file + ".resource_reference", dst_file + ".resource_reference")
 
     def clear_staging(self):
-        pass
+        self.set_staged_files([])

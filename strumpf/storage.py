@@ -28,8 +28,9 @@ class Service:
         for blob in generator:
             print("\t File name: " + blob.name)
 
-    def get_all_blobs(self):
-        return self.blob_service.list_blobs(self.container_name)
+    def get_all_blob_names(self):
+        blob_gen = self.blob_service.list_blobs(self.container_name)
+        return [blob.name for blob in blob_gen]
 
     def download_blob(self, file_name, local_path):
         download_location = os.path.join(local_path, file_name)

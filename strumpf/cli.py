@@ -157,8 +157,7 @@ class CLI(object):
                    click.style("config.json", bold=True) + ":\n")
         click.echo(click.style(formatted_json, fg="green", bold=True))
 
-        confirm = input(
-            "\nDoes this look good? (default 'y') [y/n]: ") or 'yes'
+        confirm = input("\nDoes this look good? (default 'y') [y/n]: ") or 'yes'
         if not to_bool(confirm):
             click.echo(
                 "" + click.style("Please initialize strumpf once again", fg="red", bold=True))
