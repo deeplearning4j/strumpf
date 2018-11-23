@@ -132,6 +132,14 @@ class Strumpf:
         c = os.listdir(_BASE_DIR)
         return [x for x in c if x.startswith('strumpf')]
 
+    def get_total_file_size(self):
+        local_dir = self.get_local_resource_dir()
+        sizes = []
+        for path, _, filenames in os.walk(local_dir):
+            for name in filenames:
+                full_path = os.path.join(path, name)
+                sizes.append(os.path.getsize(full_path))
+        return  sum(sizes)
 
     def get_large_files(self, relative_path=None):
         large_files = []

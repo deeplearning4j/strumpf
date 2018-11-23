@@ -28,7 +28,8 @@ import click
 from click.exceptions import ClickException
 from dateutil import parser
 
-import strumpf
+from . import core
+from . import storage
 from .utils import set_context
 
 if sys.version_info[0] == 2:
@@ -47,7 +48,7 @@ class CLI(object):
         self.var_args = None
         self.command = None
 
-        self.strumpf = strumpf.Strumpf()
+        self.strumpf = core.Strumpf()
         self.config = self.strumpf.get_config()
         self.default_account_name = self.config['azure_account_name']
         self.default_file_size_in_mb = self.config['file_size_limit_in_mb']
@@ -149,6 +150,8 @@ class CLI(object):
         }
 
         self.strumpf.validate_config(cli_out)
+        self.service = storage.Service(account_name, account_key, container_name)
+
         formatted_json = json.dumps(cli_out, sort_keys=False, indent=2)
 
         click.echo("\nThis is your current settings file " +
@@ -194,12 +197,19 @@ class CLI(object):
                 click.echo(' Untracked large files:')
                 click.echo(' (use "strumpf add <file>..." to include in what will be committed)\n')
                 for untracked in untracked_files:
-                    print(untracked)
                     click.echo("        " + click.style(untracked[0] + 
                                '      (file size: ' + str(int(untracked[1])/1000000) + ' mb)', fg="red", bold=False))
                 click.echo('\n')
         else:
             click.echo(' No large files available for upload')
+
+        untracked_file_size = sum(s[1] for s in large_files)
+        total_file_size = self.strumpf.get_total_file_size()
+        size_after_upload = total_file_size - untracked_file_size
+        space_saved = round(untracked_file_size / total_file_size * 100)
+
+        click.echo("Total directory size after uploading all large files {} mb ({} %% saved)".format(size_after_upload, space_saved))
+
     
     def add(self, path):
         if self.strumpf.is_file(path):
@@ -214,7 +224,8 @@ class CLI(object):
         self.strumpf.cache_and_delete()
         self.strumpf.clear_staging()
 
-    def download(self, file):
+    def download(self, file_name):
+        self.service.download_blob(file_name, "FOO")
         # TODO: download individual files
         # if hash already exists in cache, don't download again
         # if hash does not exist of deviates, download and re-compute hash
