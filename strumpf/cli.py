@@ -203,13 +203,15 @@ class CLI(object):
         else:
             click.echo(' No large files available for upload')
 
-        untracked_file_size = sum(s[1] for s in large_files)
-        total_file_size = self.strumpf.get_total_file_size()
-        size_after_upload = total_file_size - untracked_file_size
-        space_saved = round(untracked_file_size / total_file_size * 100)
+        large_file_size = sum(s[1] for s in large_files) / 1000000
+        total_file_size, total_files = self.strumpf.get_total_file_size()
+        total_file_size /= 1000000
+        size_after_upload = round(total_file_size - large_file_size)
+        space_saved = round(large_file_size / total_file_size * 100)
+        files_left = total_files - len(large_files)
 
-        click.echo("Total directory size after uploading all large files {} mb ({} %% saved)".format(size_after_upload, space_saved))
-
+        click.echo("Total directory size after uploading all large files {} mb ({}% saved)".format(size_after_upload, space_saved))
+        click.echo("Total number of files left after upload: {}, number of files to upload {}".format(files_left, len(large_files)))
     
     def add(self, path):
         if self.strumpf.is_file(path):
