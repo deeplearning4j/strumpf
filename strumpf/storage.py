@@ -4,6 +4,7 @@ from azure.storage.common import CloudStorageAccount
 
 
 class Service:
+    # TODO: proper azure logging?
 
     def __init__(self, account_name, account_key, container_name):
         self.account_name = account_name
@@ -43,6 +44,7 @@ class Service:
                 if not os.path.exists(temp_path):
                     os.mkdir(temp_path)
         download_location = os.path.join(local_path, file_name)
+        print('>>> Downloading blob {}'.format(file_name))
         self.blob_service.get_blob_to_path(self.container_name, file_name, download_location)
 
     def bulk_download(self, local_path):
