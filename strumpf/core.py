@@ -13,6 +13,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 ################################################################################
+import sys
+reload(sys)
+sys.setdefaultencoding("ISO-8859-1")
+
 
 from .utils import _BASE_DIR, get_dir
 import platform
@@ -22,7 +26,7 @@ import os
 import json
 import gzip
 import hashlib
-
+import codecs
 
 def target_dir():
     return get_dir()
@@ -31,8 +35,11 @@ def target_dir():
 def compute_and_store_hash(file_name):
     f_hash = hash_bytestr_iter(file_as_blockiter(open(file_name, 'rb')), hashlib.sha256())
     gzip_hash = hash_bytestr_iter(file_as_blockiter(open(file_name + '.gz', 'rb')), hashlib.sha256())
-    hashes = {file_name + '_hash': f_hash, file_name + '_compressed_hash': gzip_hash}
-    with open(file_name + '.resource_reference') as ref:
+    hashes = {
+        file_name + '_hash': f_hash.encode('utf-8'), 
+        file_name + '_compressed_hash': gzip_hash.encode('utf-8')
+        }
+    with open(file_name + '.resource_reference', 'w') as ref:
         json.dump(hashes, ref)
 
 
@@ -61,6 +68,7 @@ class Strumpf:
             'file_size_limit_in_mb': '2',
             'container_name': 'resources',
         }
+        self.service = None
 
         if os.path.isfile(self.stage_file):
             with open(self.stage_file, 'r') as f:
@@ -76,6 +84,8 @@ class Strumpf:
         else:
             self._write_config()
 
+    def set_service(self, service):
+        self.service = service
 
     def _write_config(self, filepath=None):
         if not filepath:
@@ -192,8 +202,13 @@ class Strumpf:
         files = self.get_staged_files()
         for f in files:
             with open(f) as source, gzip.open(f + '.gz', 'wb') as dest:        
-                dest.writelines(source)
+                dest.write(source.read())
 
+    def decompress_file(self, file_name, clean=True):
+        if not file_name.endswith('.gz'):
+            raise ValueError('File name is expected to have ".gz" signature.')
+        with open(file_name.strip('.gz'), 'wb') as dest, gzip.open(file_name, 'rb') as source:
+            dest.write(source.read())
 
     def compute_and_store_hashes(self):
         files = self.get_staged_files()

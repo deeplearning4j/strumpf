@@ -150,7 +150,6 @@ class CLI(object):
         }
 
         self.strumpf.validate_config(cli_out)
-        self.service = storage.Service(account_name, account_key, container_name)
 
         formatted_json = json.dumps(cli_out, sort_keys=False, indent=2)
 
@@ -168,6 +167,9 @@ class CLI(object):
         self.strumpf.set_config(cli_out)
         set_context(self.strumpf.get_context_from_config())
 
+        # Set storage service
+        self.strumpf.set_service(storage.Service(account_name, account_key, container_name))
+
 
     def status(self):
         large_files = self.strumpf.get_large_files()
@@ -175,7 +177,7 @@ class CLI(object):
         staged_files = self.strumpf.get_staged_files()
 
         modified_files = [f for f in large_files if f[0] in tracked_files]
-        untracked_files = [f for f in large_files if f[0] not in tracked_files]
+        untracked_files = [f for f in large_files if f[0] not in (tracked_files or staged_files)]
         modified_unstaged = [f for f in modified_files if f[0] not in staged_files]
 
         if large_files:
@@ -227,7 +229,7 @@ class CLI(object):
         self.strumpf.clear_staging()
 
     def download(self, file_name):
-        self.service.download_blob(file_name, "FOO")
+        self.strumpf.service.download_blob(file_name, "FOO")
         # TODO: download individual files
         # if hash already exists in cache, don't download again
         # if hash does not exist of deviates, download and re-compute hash
