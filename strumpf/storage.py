@@ -33,10 +33,19 @@ class Service:
         return [blob.name for blob in blob_gen]
 
     def download_blob(self, file_name, local_path):
+        # Note: Azure automatically creates subfolders, Python doesn't. 
+        # we need to carefully create them first.
+        if '/' in file_name:
+            parts = file_name.split('/')[:-1]
+            temp_path = local_path
+            for part in parts:
+                temp_path = os.path.join(temp_path, part)
+                if not os.path.exists(temp_path):
+                    os.mkdir(temp_path)
         download_location = os.path.join(local_path, file_name)
         self.blob_service.get_blob_to_path(self.container_name, file_name, download_location)
 
     def bulk_download(self, local_path):
-        blobs = self.get_all_blobs()
+        blobs = self.get_all_blob_names()
         for blob in blobs:
             self.download_blob(blob, local_path)     

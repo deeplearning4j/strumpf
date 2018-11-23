@@ -21,6 +21,8 @@ if sys.version_info[0] == 2:
     input = raw_input
 
 from .utils import _BASE_DIR
+from .storage import Service
+
 import platform
 import os
 import warnings
@@ -28,12 +30,12 @@ import os
 import json
 import gzip
 import hashlib
-from .storage import Service
+from shutil import copyfile
 
 
 def compute_and_store_hash(file_name):
     f_hash = hash_bytestr_iter(file_as_blockiter(open(file_name, 'rb')), hashlib.sha256())
-    gzip_hash = hash_bytestr_iter(file_as_blockiter(open(file_name + '.gz', 'rb')), hashlib.sha256())
+    gzip_hash = hash_bytestr_iter(file_as_blockiter(open(file_name + '.gzx', 'rb')), hashlib.sha256())
     hashes = {
         file_name + '_hash': f_hash.encode('utf-8'), 
         file_name + '_compressed_hash': gzip_hash.encode('utf-8')
@@ -72,7 +74,7 @@ class Strumpf:
             'azure_account_name': 'dl4jtestresources',
             'file_size_limit_in_mb': '2',
             'container_name': 'resources',
-            'cache_directory': _BASE_DIR
+            'cache_directory': _BASE_DIR + '/src'
         }
         self.service = None
 
@@ -157,11 +159,11 @@ class Strumpf:
                 sizes.append(os.path.getsize(full_path))
         return  sum(sizes), len(sizes)
 
-    def get_large_files(self, relative_path=None):
+    def get_large_files(self, path=None):
         large_files = []
         local_dir = self.get_local_resource_dir()
-        if relative_path:
-            local_dir = os.path.join(local_dir, relative_path)
+        if path:
+            local_dir = path
         
         limit = self.get_limit_in_bytes()
         for path, _, filenames in os.walk(local_dir):
@@ -193,15 +195,18 @@ class Strumpf:
         return os.path.isfile(full_path)
 
 
-    def add_file(self, filepath):
+    def add_file(self, full_file_path):
         local_dir = self.get_local_resource_dir()
-        self.stage_data = self.stage_data | set([os.path.join(local_dir, filepath)])
+        self.stage_data = self.stage_data | set([full_file_path])
         self._write_stage_files()
 
 
     def add_path(self, path):
+        path = os.path.abspath(path)
         large_files = self.get_large_files(path)
+        large_files = [f[0] for f in large_files]
         self.stage_data = self.stage_data | set(large_files)
+        self._write_stage_files()
 
 
     def compress_staged_files(self):
@@ -244,12 +249,15 @@ class Strumpf:
                 if name.endswith('.gzx'):
                     full_path = os.path.join(path, name)
                     upload = True
+                    # azure auto-generates intermediate paths
+                    name = full_path.replace(local_dir + '/', '')
                     if name in blobs:
                         confirm = input("File {} already available on Azure,".format(name) + \
                                         "do you want to override it? (default 'n') [y/n]: ") or 'yes'
                         upload = to_bool(confirm)
                     if upload:
                         print('   >>> uploading file {}'.format(full_path))
+                        name = full_path.replace(local_dir + '/', '')
                         self.service.upload_blob(name, full_path)
         print('>>> Upload finished')
         
@@ -257,10 +265,11 @@ class Strumpf:
         staged = self.get_staged_files()
         local_dir = self.get_local_resource_dir()
         cache_dir = self.config['cache_directory']
+        if not os.path.exists(cache_dir):
+                os.mkdir(cache_dir)
         for source_dir, dirs, files in os.walk(local_dir):
             dest_dir = source_dir.replace(local_dir, cache_dir)
             if not os.path.exists(dest_dir):
-                print(dest_dir)
                 os.mkdir(dest_dir)
             for file_name in files:
                 src_file = os.path.join(source_dir, file_name)
@@ -268,7 +277,7 @@ class Strumpf:
                 if src_file in staged:
                     os.rename(src_file, dst_file)
                     os.remove(src_file + '.gzx')
-                    os.copy(src_file + ".resource_reference", dst_file + ".resource_reference")
+                    copyfile(src_file + ".resource_reference", dst_file + ".resource_reference")
 
     def clear_staging(self):
         self.set_staged_files([])

@@ -13,7 +13,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 ################################################################################
-from .downloader import download as download_file
 import requests
 import json
 import os

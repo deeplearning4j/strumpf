@@ -71,8 +71,12 @@ class CLI(object):
 
         subparsers.add_parser('upload', help='Upload files to remote source')
 
+        subparsers.add_parser('bulk_download', help='Download all remote files')
         download_parser = subparsers.add_parser('download', help='Download file from remote source')
         download_parser.add_argument('-f', '--file', help='File to download.')
+        
+        subparsers.add_parser('reset', help='Reset previously staged files')
+        subparsers.add_parser('blobs', help='List all relevant Azure blobs')
 
 
         argcomplete.autocomplete(parser)
@@ -108,7 +112,11 @@ class CLI(object):
         if self.command == 'bulk_download':
             self.bulk_download()
 
-        # TODO: strumpf reset
+        if self.command == 'reset':
+            self.reset()
+        
+        if self.command == 'blobs':
+            self.blobs()
 
     def configure(self):
 
@@ -176,13 +184,13 @@ class CLI(object):
         staged_files = self.strumpf.get_staged_files()
 
         modified_files = [f for f in large_files if f[0] in tracked_files]
-        untracked_files = [f for f in large_files if f[0] not in (tracked_files or staged_files)]
+        untracked_files = [f for f in large_files if (f[0] not in staged_files and f[0 not in tracked_files])]
         modified_unstaged = [f for f in modified_files if f[0] not in staged_files]
 
         if large_files:
             if staged_files:
                 click.echo('\n Changes to be uploaded:')
-                click.echo(' (use "strumpf reset <file>..." to unstage files)\n')
+                click.echo(' (use "strumpf reset" to unstage all added files)\n')
                 for stage in staged_files:
                     click.echo('' + click.style('        modified:    ' + stage, fg="green", bold=False))
                 click.echo('\n')
@@ -228,17 +236,25 @@ class CLI(object):
         self.strumpf.clear_staging()
 
     def download(self, file_name):
-        self.strumpf.service.download_blob(file_name, "FOO")
-        # TODO: download individual files
-        # if hash already exists in cache, don't download again
+        service = self.strumpf.service_from_config()
+        service.download_blob(file_name, self.config['cache_directory'])
+        # TODO: unzip the file as well
+        # TODO: if hash already exists in cache, don't download again
         # if hash does not exist of deviates, download and re-compute hash
-        pass
     
     def bulk_download(self):
+        service = self.strumpf.service_from_config()
+        service.bulk_download(self.config['cache_directory'])
         # TODO: bulk download all remote resources and update hashes
         # i.e. force update
-        pass
         
+    def reset(self):
+        self.strumpf.clear_staging()
+    
+    def blobs(self):
+        service = self.strumpf.service_from_config()
+        service.list_all_blobs()
+
 
 def handle():
     try:
