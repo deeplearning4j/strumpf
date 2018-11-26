@@ -74,6 +74,7 @@ strumpf status
 
 Next, to add files to strumpf tracking system you use `strumpf add -p <file or path>`, to track all
 large files recently added in your test folder you could for instance issue the command `strumpf add -p .`.
+All files should be added relative to the test folder you're working with.
 
 To see the effect of adding files you can query the status afterwards again to see that your previously untracked or modified files are now staged for upload by strumpf.
 
@@ -85,4 +86,17 @@ The final step is `strumpf upload`, which does several things for you:
 - After completion of the upload, all large files will be removed locally and only _references_ to them will be kept, including the file hashes.
 - Your large files are now hosted externally on Azure and you can git commit the file references instead.
 
-TODO: download, bulk-download
+To download a file using the CLI, you use
+
+```
+strumpf download -f <relative-path-to-file>
+```
+
+This command will check if your cache already has the file you're looking for and check if its hash matches the
+one found in your local resource folder. If the hashes match, the files won't be downloaded again. If they do not match or if they are no cached files at all, the file will be downloaded.
+
+Finally, to download all available remote resource files, use:
+
+```
+strumpf bulk_download
+``` 

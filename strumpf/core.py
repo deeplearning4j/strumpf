@@ -216,7 +216,13 @@ class Strumpf:
 
 
     def add_file(self, full_file_path):
+        # Accept path either absolute or relative to local dir
         local_dir = self.get_local_resource_dir()
+        if not os.path.isfile(full_file_path) and local_dir not in full_file_path:
+            full_file_path = os.path.join(local_dir, full_file_path)
+            if not os.path.isfile(full_file_path):
+                raise RuntimeError("File cannot be found, aborting.")
+            
         limit = self.get_limit_in_bytes()
         size = os.path.getsize(full_file_path)
         if size > limit:

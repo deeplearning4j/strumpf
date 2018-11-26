@@ -45,7 +45,6 @@ def test_workflow():
     large_b_path = os.path.join(local_dir, large_b)
     small_path = os.path.join(local_dir, small)
 
-
     _create_large_test_file(os.path.join(local_dir, large_a_path), 2 * limit)
     _create_large_test_file(os.path.join(local_dir, large_b_path), 2 * limit)
     _create_large_test_file(os.path.join(local_dir, small_path), 0) # empty file
@@ -108,8 +107,6 @@ def test_workflow():
     was_downloaded = cli.download(large_a)
     assert was_downloaded
     assert os.path.isfile(os.path.join(cache, large_a))
-
-    #TODO make clear stuff is relative to base path "everywhere"
 
     # Cleaning up
     os.remove(large_a_path + REF)
