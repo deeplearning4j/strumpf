@@ -174,10 +174,6 @@ class CLI(object):
         self.strumpf.set_config(cli_out)
         set_context(self.strumpf.get_context_from_config())
 
-        # Set storage service
-        self.strumpf.set_service(storage.Service(account_name, account_key, container_name))
-
-
     def status(self):
         large_files = self.strumpf.get_large_files()
         tracked_files = self.strumpf.get_tracked_files()
@@ -237,17 +233,12 @@ class CLI(object):
 
     def download(self, file_name):
         service = self.strumpf.service_from_config()
-        service.download_blob(file_name, self.config['cache_directory'])
-        # TODO: unzip the file as well
-        # TODO: if hash already exists in cache, don't download again
-        # if hash does not exist of deviates, download and re-compute hash
-    
+        service.download_blob(file_name, self.strumpf.get_cache_dir())
+
     def bulk_download(self):
         service = self.strumpf.service_from_config()
-        service.bulk_download(self.config['cache_directory'])
-        # TODO: bulk download all remote resources and update hashes
-        # i.e. force update
-        
+        service.bulk_download(self.strumpf.get_cache_dir())
+
     def reset(self):
         self.strumpf.clear_staging()
     

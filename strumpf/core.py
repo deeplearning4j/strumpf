@@ -33,14 +33,23 @@ import hashlib
 from shutil import copyfile
 
 
+REF = ".resource_reference"
+ZIP = ".gzx"
+
+
+def mkdir(directory)
+    if not os.path.exists(directory):
+        os.mkdir(directory)
+
+
 def compute_and_store_hash(file_name):
     f_hash = hash_bytestr_iter(file_as_blockiter(open(file_name, 'rb')), hashlib.sha256())
-    gzip_hash = hash_bytestr_iter(file_as_blockiter(open(file_name + '.gzx', 'rb')), hashlib.sha256())
+    gzip_hash = hash_bytestr_iter(file_as_blockiter(open(file_name + ZIP, 'rb')), hashlib.sha256())
     hashes = {
         file_name + '_hash': f_hash.encode('utf-8'), 
         file_name + '_compressed_hash': gzip_hash.encode('utf-8')
         }
-    with open(file_name + '.resource_reference', 'w') as ref:
+    with open(file_name + REF, 'w') as ref:
         json.dump(hashes, ref)
 
 
@@ -57,6 +66,12 @@ def file_as_blockiter(afile, blocksize=65536):
             yield block
             block = afile.read(blocksize)
 
+def decompress_file(file_name, clean=True):
+    if not file_name.endswith(ZIP):
+        raise ValueError('File name is expected to have "{}" signature.'.format(ZIP))
+    with open(file_name.strip(ZIP), 'wb') as dest, gzip.open(file_name, 'rb') as source:
+        dest.write(source.read())
+
 
 def to_bool(string):
     if type(string) is bool:
@@ -72,11 +87,10 @@ class Strumpf:
         self.config_file = os.path.join(_BASE_DIR, 'config.json')
         self.config = {
             'azure_account_name': 'dl4jtestresources',
-            'file_size_limit_in_mb': '2',
+            'file_size_limit_in_mb': '1',
             'container_name': 'resources',
             'cache_directory': _BASE_DIR + '/src'
         }
-        self.service = None
 
         if os.path.isfile(self.stage_file):
             with open(self.stage_file, 'r') as f:
@@ -91,9 +105,6 @@ class Strumpf:
                 self.config.update(json.load(f))
         else:
             self._write_config()
-
-    def set_service(self, service):
-        self.service = service
 
     def _write_config(self, filepath=None):
         if not filepath:
@@ -135,6 +146,9 @@ class Strumpf:
 
     def get_local_resource_dir(self):
         return self.config['local_resource_folder']
+
+    def get_cache_dir(self):
+        return self.config['cache_directory']
 
     def get_context_from_config(self):
         local_resource_folder = self.config['local_resource_folder']
@@ -183,8 +197,8 @@ class Strumpf:
         for path, _, filenames in os.walk(local_dir):
             for name in filenames:
                 full_path = os.path.join(path, name)
-                if full_path.endswith(".resource_reference"):
-                    original_file = full_path.replace(".resource_reference", "")
+                if full_path.endswith(REF):
+                    original_file = full_path.replace(REF, "")
                     tracked_files.append(original_file)
         return tracked_files
 
@@ -212,14 +226,8 @@ class Strumpf:
     def compress_staged_files(self):
         files = self.get_staged_files()
         for f in files:
-            with open(f) as source, gzip.open(f + '.gzx', 'wb') as dest:        
+            with open(f) as source, gzip.open(f + ZIP, 'wb') as dest:        
                 dest.write(source.read())
-
-    def decompress_file(self, file_name, clean=True):
-        if not file_name.endswith('.gzx'):
-            raise ValueError('File name is expected to have ".gzx" signature.')
-        with open(file_name.strip('.gzx'), 'wb') as dest, gzip.open(file_name, 'rb') as source:
-            dest.write(source.read())
 
     def compute_and_store_hashes(self):
         files = self.get_staged_files()
@@ -230,6 +238,10 @@ class Strumpf:
         name = self.config['azure_account_name']
         key = self.config['azure_account_key']
         container = self.config['container_name']
+        try:
+            service = Service(name, key, container)
+        except RuntimeError e:
+            raise 'Could not establish Azure connection. Are your credentials valid?'
         return Service(name, key, container)
 
     def upload_compressed_files(self):
@@ -237,16 +249,17 @@ class Strumpf:
         container = self.config['container_name']
         print('>>> Starting upload to Azure blob storage')
         print('>>> A total of {} large files will be uploaded to container "{}"'.format(num_staged_files, container))
-        if self.service is None:
-            self.service = self.service_from_config()
 
-        blobs = self.service.get_all_blob_names()
+        service = self.service_from_config()
+
+        blobs = service.get_all_blob_names()
         files = self.get_staged_files()
         local_dir = self.get_local_resource_dir()
 
         for path, _, file_names in os.walk(local_dir):
             for name in file_names:
-                if name.endswith('.gzx'):
+                # uploaded zipped files and references
+                if name.endswith(ZIP) or name.endswith(REF):
                     full_path = os.path.join(path, name)
                     upload = True
                     # azure auto-generates intermediate paths
@@ -258,26 +271,28 @@ class Strumpf:
                     if upload:
                         print('   >>> uploading file {}'.format(full_path))
                         name = full_path.replace(local_dir + '/', '')
-                        self.service.upload_blob(name, full_path)
+                        service.upload_blob(name, full_path)
         print('>>> Upload finished')
         
     def cache_and_delete(self):
         staged = self.get_staged_files()
         local_dir = self.get_local_resource_dir()
-        cache_dir = self.config['cache_directory']
-        if not os.path.exists(cache_dir):
-                os.mkdir(cache_dir)
+        cache_dir = self.get_cache_dir()
+        mkdir(cache_dir)
         for source_dir, dirs, files in os.walk(local_dir):
             dest_dir = source_dir.replace(local_dir, cache_dir)
-            if not os.path.exists(dest_dir):
-                os.mkdir(dest_dir)
+            mkdir(dest_dir)
             for file_name in files:
                 src_file = os.path.join(source_dir, file_name)
                 dst_file = os.path.join(dest_dir, file_name)
                 if src_file in staged:
+                    # move original file to cache
                     os.rename(src_file, dst_file)
-                    os.remove(src_file + '.gzx')
-                    copyfile(src_file + ".resource_reference", dst_file + ".resource_reference")
+                    # remove zipped files
+                    os.remove(src_file + ZIP)
+                    # copy resource references to cache
+                    copyfile(src_file + REF, dst_file + REF)
 
     def clear_staging(self):
-        self.set_staged_files([])
+        empty_staging = []
+        self.set_staged_files(empty_staging)
