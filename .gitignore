@@ -104,4 +104,7 @@ venv.bak/
 .mypy_cache/
 
 # VS code
-.vscode 
+.vscode
+
+# test configuration (contains azure password)
+config.json
