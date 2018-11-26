@@ -29,7 +29,6 @@ from click.exceptions import ClickException
 from dateutil import parser
 
 from . import core
-from . import storage
 from .utils import set_context
 
 if sys.version_info[0] == 2:
@@ -196,21 +195,21 @@ class CLI(object):
                 click.echo(' (use "strumpf add <file>..." to update files)\n')
                 for mod in modified_files:
                     click.echo('' + click.style('        modified:    ' + mod[0] + 
-                               '  (file size: ' + str(int(mod[1])/1000000) + ' mb)', fg="red", bold=False))
+                               '  (file size: ' + str(int(mod[1])/(1024*1024)) + ' mb)', fg="red", bold=False))
                 click.echo('\n')
             if untracked_files:
                 click.echo(' Untracked large files:')
                 click.echo(' (use "strumpf add <file>..." to include in what will be committed)\n')
                 for untracked in untracked_files:
                     click.echo("        " + click.style(untracked[0] + 
-                               '      (file size: ' + str(int(untracked[1])/1000000) + ' mb)', fg="red", bold=False))
+                               '      (file size: ' + str(int(untracked[1])/(1024*1024)) + ' mb)', fg="red", bold=False))
                 click.echo('\n')
         else:
             click.echo(' No large files available for upload')
 
-        large_file_size = sum(s[1] for s in large_files) / 1000000
+        large_file_size = sum(s[1] for s in large_files) / (1024*1024)
         total_file_size, total_files = self.strumpf.get_total_file_size()
-        total_file_size /= 1000000
+        total_file_size /= 1024*1024
         size_after_upload = round(total_file_size - large_file_size)
         space_saved = round(large_file_size / total_file_size * 100)
         files_left = total_files - len(large_files)

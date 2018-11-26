@@ -14,14 +14,12 @@
 # SPDX-License-Identifier: Apache-2.0
 ################################################################################
 import sys
-reload(sys)
-sys.setdefaultencoding("ISO-8859-1")
-
 if sys.version_info[0] == 2:
     input = raw_input
+    reload(sys)
+    sys.setdefaultencoding("ISO-8859-1")
 
 from .utils import _BASE_DIR
-from .storage import Service
 
 import platform
 import os
@@ -31,15 +29,25 @@ import json
 import gzip
 import hashlib
 from shutil import copyfile
-
+import os, uuid, sys
+from azure.storage.blob import BlockBlobService, PublicAccess
+from azure.storage.common import CloudStorageAccount
+import json
 
 REF = ".resource_reference"
 ZIP = ".gzx"
 
 
-def mkdir(directory)
+def mkdir(directory):
     if not os.path.exists(directory):
         os.mkdir(directory)
+
+
+def decompress_file(file_name, clean=True):
+    if not file_name.endswith(core.ZIP):
+        raise ValueError('File name is expected to have "{}" signature.'.format(core.ZIP))
+    with open(file_name.strip(core.ZIP), 'wb') as dest, gzip.open(file_name, 'rb') as source:
+        dest.write(source.read())
 
 
 def compute_and_store_hash(file_name):
@@ -65,12 +73,6 @@ def file_as_blockiter(afile, blocksize=65536):
         while len(block) > 0:
             yield block
             block = afile.read(blocksize)
-
-def decompress_file(file_name, clean=True):
-    if not file_name.endswith(ZIP):
-        raise ValueError('File name is expected to have "{}" signature.'.format(ZIP))
-    with open(file_name.strip(ZIP), 'wb') as dest, gzip.open(file_name, 'rb') as source:
-        dest.write(source.read())
 
 
 def to_bool(string):
@@ -142,7 +144,7 @@ class Strumpf:
 
     def get_limit_in_bytes(self):
         limit = self.config['file_size_limit_in_mb']
-        return float(limit) * 1000 * 1000
+        return float(limit) * 1024 * 1024
 
     def get_local_resource_dir(self):
         return self.config['local_resource_folder']
@@ -240,7 +242,7 @@ class Strumpf:
         container = self.config['container_name']
         try:
             service = Service(name, key, container)
-        except RuntimeError e:
+        except RuntimeError:
             raise 'Could not establish Azure connection. Are your credentials valid?'
         return Service(name, key, container)
 
@@ -296,3 +298,84 @@ class Strumpf:
     def clear_staging(self):
         empty_staging = []
         self.set_staged_files(empty_staging)
+
+
+
+class Service:
+    # TODO: proper azure logging?
+
+    def __init__(self, account_name, account_key, container_name):
+        self.account_name = account_name
+        self.account_key = account_key
+        self.blob_service = BlockBlobService(account_name, account_key)
+        self.container_name = container_name
+        self.blobs = self.get_all_blob_names()
+        self.strump = None
+
+    def _create_container(self, container_name):
+        self.blob_service.create_container(container_name)
+        self.blob_service.set_container_acl(container_name, public_access=PublicAccess.Container)
+
+    def _delete_container(self, container_name):
+        # danger zone
+        self.blob_service.delete_container(container_name)
+
+    def upload_blob(self, file_name, full_local_file_path):
+        self.blob_service.create_blob_from_path(
+            self.container_name, file_name, full_local_file_path)
+        self.blobs.append(file_name)
+
+    def list_all_blobs(self):
+        generator = self.blob_service.list_blobs(self.container_name)
+        for blob in generator:
+            print("\t File name: " + blob.name)
+
+    def get_all_blob_names(self):
+        blob_gen = self.blob_service.list_blobs(self.container_name)
+        return [blob.name for blob in blob_gen]
+
+    def download_blob(self, file_name, local_path):
+
+        # download zipped version and file reference
+        ref_name = file_name + core.REF
+        file_name = file_name + core.ZIP
+
+        if '/' in file_name:
+            parts = file_name.split('/')[:-1]
+            temp_path = local_path
+            for part in parts:
+                temp_path = os.path.join(temp_path, part)
+                # Note: Azure automatically creates subfolders, Python doesn't. 
+                # we need to carefully create them first.
+                core.mkdir(temp_path)
+        
+        ref_location = os.path.join(local_path, ref_name)
+        download_location = os.path.join(local_path, file_name)
+
+        download_again = True
+        if os.path.isfile(ref_location) and os.path.isfile(download_location):
+            print('>>> Found local reference and file in cache, compare to original reference.')
+            dup_ref = json.load(ref_location)
+            if not self.strump:
+                self.strump = core.Strump()
+            local_resource_path = self.strump.get_local_resource_dir()
+            original_ref_location = os.path.join(local_resource_path, ref_name)
+            original_ref = json.load(original_ref_location)
+            if original_ref == dup_ref:
+                download_again = False
+
+        if download_again:
+            print('>>> Downloading blob {}'.format(file_name))
+            self.blob_service.get_blob_to_path(self.container_name, file_name, download_location)
+            # Unzip file and delete compressed version
+            decompress_file(download_location, clean=True)
+            # Update file reference as well
+            self.blob_service.get_blob_to_path(self.container_name, ref_name, ref_location)
+        else:
+            print('>>> Resource file and reference already up to date, no download necessary.')
+
+
+    def bulk_download(self, local_path):
+        blobs = self.get_all_blob_names()
+        for blob in blobs:
+            self.download_blob(blob, local_path)     
