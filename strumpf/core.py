@@ -28,11 +28,12 @@ import os
 import json
 import gzip
 import hashlib
-from shutil import copyfile
+import shutil
 import os, uuid, sys
 from azure.storage.blob import BlockBlobService, PublicAccess
 from azure.storage.common import CloudStorageAccount
 import json
+import glob
 
 REF = ".resource_reference"
 ZIP = ".gzx"
@@ -44,10 +45,13 @@ def mkdir(directory):
 
 
 def decompress_file(file_name, clean=True):
-    if not file_name.endswith(core.ZIP):
-        raise ValueError('File name is expected to have "{}" signature.'.format(core.ZIP))
-    with open(file_name.strip(core.ZIP), 'wb') as dest, gzip.open(file_name, 'rb') as source:
+    if not file_name.endswith(ZIP):
+        raise ValueError('File name is expected to have "{}" signature.'.format(ZIP))
+    
+    with open(file_name.strip(ZIP), 'wb') as dest, gzip.open(file_name, 'rb') as source:
         dest.write(source.read())
+    if clean:
+        os.remove(file_name)
 
 
 def compute_and_store_hash(file_name):
@@ -213,8 +217,11 @@ class Strumpf:
 
     def add_file(self, full_file_path):
         local_dir = self.get_local_resource_dir()
-        self.stage_data = self.stage_data | set([full_file_path])
-        self._write_stage_files()
+        limit = self.get_limit_in_bytes()
+        size = os.path.getsize(full_file_path)
+        if size > limit:
+            self.stage_data = self.stage_data | set([full_file_path])
+            self._write_stage_files()
 
 
     def add_path(self, path):
@@ -260,8 +267,7 @@ class Strumpf:
 
         for path, _, file_names in os.walk(local_dir):
             for name in file_names:
-                # uploaded zipped files and references
-                if name.endswith(ZIP) or name.endswith(REF):
+                if name.endswith(ZIP):
                     full_path = os.path.join(path, name)
                     upload = True
                     # azure auto-generates intermediate paths
@@ -274,6 +280,8 @@ class Strumpf:
                         print('   >>> uploading file {}'.format(full_path))
                         name = full_path.replace(local_dir + '/', '')
                         service.upload_blob(name, full_path)
+                        # upload reference as well
+                        service.upload_blob(name.replace(ZIP, REF), full_path.replace(ZIP, REF))
         print('>>> Upload finished')
         
     def cache_and_delete(self):
@@ -293,13 +301,24 @@ class Strumpf:
                     # remove zipped files
                     os.remove(src_file + ZIP)
                     # copy resource references to cache
-                    copyfile(src_file + REF, dst_file + REF)
+                    shutil.copyfile(src_file + REF, dst_file + REF)
 
     def clear_staging(self):
         empty_staging = []
         self.set_staged_files(empty_staging)
 
-
+    
+    def _clear_cache(self):
+        cache_dir = self.get_cache_dir()
+        for file_name in os.listdir(cache_dir):
+            file_path = os.path.join(cache_dir, file_name)
+            try:
+                if os.path.isfile(file_path):
+                    os.unlink(file_path)
+                elif os.path.isdir(file_path): 
+                    shutil.rmtree(file_path)
+            except Exception as e:
+                print(e)
 
 class Service:
     # TODO: proper azure logging?
@@ -334,11 +353,11 @@ class Service:
         blob_gen = self.blob_service.list_blobs(self.container_name)
         return [blob.name for blob in blob_gen]
 
-    def download_blob(self, file_name, local_path):
+    def download_blob(self, original_file_name, local_path):
 
         # download zipped version and file reference
-        ref_name = file_name + core.REF
-        file_name = file_name + core.ZIP
+        ref_name = original_file_name + REF
+        file_name = original_file_name + ZIP
 
         if '/' in file_name:
             parts = file_name.split('/')[:-1]
@@ -347,20 +366,22 @@ class Service:
                 temp_path = os.path.join(temp_path, part)
                 # Note: Azure automatically creates subfolders, Python doesn't. 
                 # we need to carefully create them first.
-                core.mkdir(temp_path)
+                mkdir(temp_path)
         
         ref_location = os.path.join(local_path, ref_name)
         download_location = os.path.join(local_path, file_name)
 
         download_again = True
-        if os.path.isfile(ref_location) and os.path.isfile(download_location):
+        if os.path.isfile(ref_location) and os.path.isfile(download_location.strip(ZIP)):
             print('>>> Found local reference and file in cache, compare to original reference.')
-            dup_ref = json.load(ref_location)
+            with open(ref_location, 'r') as ref_file:
+                dup_ref = json.loads(ref_file.read())
             if not self.strump:
-                self.strump = core.Strump()
+                self.strump = Strumpf()
             local_resource_path = self.strump.get_local_resource_dir()
             original_ref_location = os.path.join(local_resource_path, ref_name)
-            original_ref = json.load(original_ref_location)
+            with open(original_ref_location , 'r') as original_file:
+                original_ref = json.loads(original_file.read())
             if original_ref == dup_ref:
                 download_again = False
 
@@ -373,6 +394,8 @@ class Service:
             self.blob_service.get_blob_to_path(self.container_name, ref_name, ref_location)
         else:
             print('>>> Resource file and reference already up to date, no download necessary.')
+
+        return download_again
 
 
     def bulk_download(self, local_path):

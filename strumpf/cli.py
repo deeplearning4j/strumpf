@@ -211,7 +211,7 @@ class CLI(object):
         total_file_size, total_files = self.strumpf.get_total_file_size()
         total_file_size /= 1024*1024
         size_after_upload = round(total_file_size - large_file_size)
-        space_saved = round(large_file_size / total_file_size * 100)
+        space_saved = round(large_file_size / total_file_size * 100) if total_file_size > 0 else 0
         files_left = total_files - len(large_files)
 
         click.echo("Total directory size after uploading all large files {} mb ({}% saved)".format(size_after_upload, space_saved))
@@ -224,15 +224,21 @@ class CLI(object):
             self.strumpf.add_path(path)
 
     def upload(self):
+        print('>>> Compressing staged files')
         self.strumpf.compress_staged_files()
+        print('>>> Computing SHA256 hashes for large files')
         self.strumpf.compute_and_store_hashes()
+        print('>>> Uploading compressed files')
         self.strumpf.upload_compressed_files()
+        print('>>> Caching large files locally and deleting them from resource folder')
         self.strumpf.cache_and_delete()
+        print('>>> Remove files from staging environment.')
         self.strumpf.clear_staging()
 
     def download(self, file_name):
         service = self.strumpf.service_from_config()
-        service.download_blob(file_name, self.strumpf.get_cache_dir())
+        was_downloaded = service.download_blob(file_name, self.strumpf.get_cache_dir())
+        return was_downloaded
 
     def bulk_download(self):
         service = self.strumpf.service_from_config()
