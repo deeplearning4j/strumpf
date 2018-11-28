@@ -29,7 +29,7 @@ from click.exceptions import ClickException
 from dateutil import parser
 
 from . import core
-from .utils import set_context
+from .utils import set_context  
 
 if sys.version_info[0] == 2:
     input = raw_input
@@ -63,19 +63,19 @@ class CLI(object):
         )
 
         subparsers = parser.add_subparsers(title='subcommands', dest='command')
-        subparsers.add_parser('configure', help='Configure strumpf')
-        subparsers.add_parser('status', help='Get strumpf status')
-        file_add_parser = subparsers.add_parser('add', help='Add files to strumpf tracking system')
+        subparsers.add_parser('configure', help='Configure strumpf.')
+        subparsers.add_parser('status', help='Get strumpf status.')
+        file_add_parser = subparsers.add_parser('add', help='Add files to strumpf tracking system.')
         file_add_parser.add_argument('-p', '--path', help='Path or file to add to upload.')
 
-        subparsers.add_parser('upload', help='Upload files to remote source')
+        subparsers.add_parser('upload', help='Upload files to remote source.')
 
         subparsers.add_parser('bulk_download', help='Download all remote files')
-        download_parser = subparsers.add_parser('download', help='Download file from remote source')
+        download_parser = subparsers.add_parser('download', help='Download file from remote source.')
         download_parser.add_argument('-f', '--file', help='File to download.')
         
-        subparsers.add_parser('reset', help='Reset previously staged files')
-        subparsers.add_parser('blobs', help='List all relevant Azure blobs')
+        subparsers.add_parser('reset', help='Reset previously staged files.')
+        subparsers.add_parser('blobs', help='List all relevant Azure blobs.')
 
 
         argcomplete.autocomplete(parser)
@@ -250,7 +250,6 @@ class CLI(object):
     def blobs(self):
         service = self.strumpf.service_from_config()
         service.list_all_blobs()
-
 
 def handle():
     try:
