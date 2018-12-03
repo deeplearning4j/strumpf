@@ -47,7 +47,8 @@ def test_workflow():
 
     _create_large_test_file(os.path.join(local_dir, large_a_path), 2 * limit)
     _create_large_test_file(os.path.join(local_dir, large_b_path), 2 * limit)
-    _create_large_test_file(os.path.join(local_dir, small_path), 0) # empty file
+    _create_large_test_file(os.path.join(
+        local_dir, small_path), 0)  # empty file
 
     # Adding the small file has no effect, the large file will be added to "staged" files.
     # The user has to provide the full file local file path to avoid misunderstandings.
@@ -89,7 +90,7 @@ def test_workflow():
     # Confirm that zipped files and references are available on azure
     assert large_a + ZIP in blobs
     assert large_a + REF in blobs
-    
+
     # Confirm that original (not zipped) files and references have been cached as well
     cache = strumpf.get_cache_dir()
     assert os.path.isfile(os.path.join(cache, large_a))
@@ -112,6 +113,7 @@ def test_workflow():
     os.remove(large_a_path + REF)
     os.remove(large_b_path + REF)
     os.remove(small_path)
+
 
 if __name__ == '__main__':
     pytest.main([__file__])
