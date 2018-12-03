@@ -54,12 +54,13 @@ def decompress_file(file_name, clean=True):
         os.remove(file_name)
 
 
-def compute_and_store_hash(file_name):
+def compute_and_store_hash(file_name, version):
     f_hash = hash_bytestr_iter(file_as_blockiter(open(file_name, 'rb')), hashlib.sha256())
     gzip_hash = hash_bytestr_iter(file_as_blockiter(open(file_name + ZIP, 'rb')), hashlib.sha256())
     hashes = {
         file_name + '_hash': f_hash.encode('utf-8'), 
-        file_name + '_compressed_hash': gzip_hash.encode('utf-8')
+        file_name + '_compressed_hash': gzip_hash.encode('utf-8'),
+        'version': version
         }
     with open(file_name + REF, 'w') as ref:
         json.dump(hashes, ref)
@@ -245,9 +246,13 @@ class Strumpf:
                 dest.write(source.read())
 
     def compute_and_store_hashes(self):
+        version = 1
+        # TODO if reference already exists, load version and increment
+
+
         files = self.get_staged_files()
         for f in files:
-            compute_and_store_hash(f)
+            compute_and_store_hash(f, version)
 
     def service_from_config(self):
         name = self.config['azure_account_name']
