@@ -29,7 +29,7 @@ from click.exceptions import ClickException
 from dateutil import parser
 
 from . import core
-from .utils import set_context  
+from .utils import set_context
 
 if sys.version_info[0] == 2:
     input = raw_input
@@ -65,18 +65,21 @@ class CLI(object):
         subparsers = parser.add_subparsers(title='subcommands', dest='command')
         subparsers.add_parser('configure', help='Configure strumpf.')
         subparsers.add_parser('status', help='Get strumpf status.')
-        file_add_parser = subparsers.add_parser('add', help='Add files to strumpf tracking system.')
-        file_add_parser.add_argument('-p', '--path', help='Path or file to add to upload.')
+        file_add_parser = subparsers.add_parser(
+            'add', help='Add files to strumpf tracking system.')
+        file_add_parser.add_argument(
+            '-p', '--path', help='Path or file to add to upload.')
 
         subparsers.add_parser('upload', help='Upload files to remote source.')
 
-        subparsers.add_parser('bulk_download', help='Download all remote files')
-        download_parser = subparsers.add_parser('download', help='Download file from remote source.')
+        subparsers.add_parser(
+            'bulk_download', help='Download all remote files')
+        download_parser = subparsers.add_parser(
+            'download', help='Download file from remote source.')
         download_parser.add_argument('-f', '--file', help='File to download.')
-        
+
         subparsers.add_parser('reset', help='Reset previously staged files.')
         subparsers.add_parser('blobs', help='List all relevant Azure blobs.')
-
 
         argcomplete.autocomplete(parser)
         args = parser.parse_args(args)
@@ -107,13 +110,13 @@ class CLI(object):
         if self.command == 'download':
             self.download(self.var_args['file'])
             return
-        
+
         if self.command == 'bulk_download':
             self.bulk_download()
 
         if self.command == 'reset':
             self.reset()
-        
+
         if self.command == 'blobs':
             self.blobs()
 
@@ -138,15 +141,16 @@ class CLI(object):
 
         # Container name
         container_name = input("Which blob storage container should be used (default '%s'): " %
-                             self.default_container_name) or self.default_container_name
+                               self.default_container_name) or self.default_container_name
 
         # File size limit
         file_limit = input("Strumpf uploads large files to Azure instead of checking them into git," +
-                            "from which file size in MB on should we upload your files (default '%s' MB): " %
-                             self.default_file_size_in_mb) or self.default_file_size_in_mb
+                           "from which file size in MB on should we upload your files (default '%s' MB): " %
+                           self.default_file_size_in_mb) or self.default_file_size_in_mb
 
         # Local resource folder
-        local_resource_folder = input("Please specify the full path to the resource folder you want to track: ")
+        local_resource_folder = input(
+            "Please specify the full path to the resource folder you want to track: ")
 
         cli_out = {
             'azure_account_name': account_name,
@@ -164,7 +168,8 @@ class CLI(object):
                    click.style("config.json", bold=True) + ":\n")
         click.echo(click.style(formatted_json, fg="green", bold=True))
 
-        confirm = input("\nDoes this look good? (default 'y') [y/n]: ") or 'yes'
+        confirm = input(
+            "\nDoes this look good? (default 'y') [y/n]: ") or 'yes'
         if not to_bool(confirm):
             click.echo(
                 "" + click.style("Please initialize strumpf once again", fg="red", bold=True))
@@ -179,30 +184,35 @@ class CLI(object):
         staged_files = self.strumpf.get_staged_files()
 
         modified_files = [f for f in large_files if f[0] in tracked_files]
-        untracked_files = [f for f in large_files if (f[0] not in staged_files and f[0 not in tracked_files])]
-        modified_unstaged = [f for f in modified_files if f[0] not in staged_files]
+        untracked_files = [f for f in large_files if (
+            f[0] not in staged_files and f[0 not in tracked_files])]
+        modified_unstaged = [
+            f for f in modified_files if f[0] not in staged_files]
 
         if large_files:
             if staged_files:
                 click.echo('\n Changes to be uploaded:')
-                click.echo(' (use "strumpf reset" to unstage all added files)\n')
+                click.echo(
+                    ' (use "strumpf reset" to unstage all added files)\n')
                 for stage in staged_files:
-                    click.echo('' + click.style('        modified:    ' + stage, fg="green", bold=False))
+                    click.echo(
+                        '' + click.style('        modified:    ' + stage, fg="green", bold=False))
                 click.echo('\n')
 
             if modified_unstaged:
                 click.echo('\n Changes not staged for upload:')
                 click.echo(' (use "strumpf add <file>..." to update files)\n')
                 for mod in modified_files:
-                    click.echo('' + click.style('        modified:    ' + mod[0] + 
-                               '  (file size: ' + str(int(mod[1])/(1024*1024)) + ' mb)', fg="red", bold=False))
+                    click.echo('' + click.style('        modified:    ' + mod[0] +
+                                                '  (file size: ' + str(int(mod[1])/(1024*1024)) + ' mb)', fg="red", bold=False))
                 click.echo('\n')
             if untracked_files:
                 click.echo(' Untracked large files:')
-                click.echo(' (use "strumpf add <file>..." to include in what will be committed)\n')
+                click.echo(
+                    ' (use "strumpf add <file>..." to include in what will be committed)\n')
                 for untracked in untracked_files:
-                    click.echo("        " + click.style(untracked[0] + 
-                               '      (file size: ' + str(int(untracked[1])/(1024*1024)) + ' mb)', fg="red", bold=False))
+                    click.echo("        " + click.style(untracked[0] +
+                                                        '      (file size: ' + str(int(untracked[1])/(1024*1024)) + ' mb)', fg="red", bold=False))
                 click.echo('\n')
         else:
             click.echo(' No large files available for upload')
@@ -211,12 +221,15 @@ class CLI(object):
         total_file_size, total_files = self.strumpf.get_total_file_size()
         total_file_size /= 1024*1024
         size_after_upload = round(total_file_size - large_file_size)
-        space_saved = round(large_file_size / total_file_size * 100) if total_file_size > 0 else 0
+        space_saved = round(large_file_size / total_file_size *
+                            100) if total_file_size > 0 else 0
         files_left = total_files - len(large_files)
 
-        click.echo("Total directory size after uploading all large files {} mb ({}% saved)".format(size_after_upload, space_saved))
-        click.echo("Total number of files left after upload: {}, number of files to upload {}".format(files_left, len(large_files)))
-    
+        click.echo("Total directory size after uploading all large files {} mb ({}% saved)".format(
+            size_after_upload, space_saved))
+        click.echo("Total number of files left after upload: {}, number of files to upload {}".format(
+            files_left, len(large_files)))
+
     def add(self, path):
         if self.strumpf.is_file(path):
             self.strumpf.add_file(path)
@@ -237,7 +250,8 @@ class CLI(object):
 
     def download(self, file_name):
         service = self.strumpf.service_from_config()
-        was_downloaded = service.download_blob(file_name, self.strumpf.get_cache_dir())
+        was_downloaded = service.download_blob(
+            file_name, self.strumpf.get_cache_dir())
         return was_downloaded
 
     def bulk_download(self):
@@ -246,10 +260,11 @@ class CLI(object):
 
     def reset(self):
         self.strumpf.clear_staging()
-    
+
     def blobs(self):
         service = self.strumpf.service_from_config()
         service.list_all_blobs()
+
 
 def handle():
     try:

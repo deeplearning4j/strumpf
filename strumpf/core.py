@@ -29,7 +29,9 @@ import json
 import gzip
 import hashlib
 import shutil
-import os, uuid, sys
+import os
+import uuid
+import sys
 from azure.storage.blob import BlockBlobService, PublicAccess
 from azure.storage.common import CloudStorageAccount
 import json
@@ -46,14 +48,16 @@ def mkdir(directory):
 
 def decompress_file(file_name, clean=True):
     if not file_name.endswith(ZIP):
-        raise ValueError('File name is expected to have "{}" signature.'.format(ZIP))
-    
+        raise ValueError(
+            'File name is expected to have "{}" signature.'.format(ZIP))
+
     with open(file_name.strip(ZIP), 'wb') as dest, gzip.open(file_name, 'rb') as source:
         dest.write(source.read())
     if clean:
         os.remove(file_name)
 
 
+<<<<<<< HEAD
 def compute_and_store_hash(file_name, version):
     f_hash = hash_bytestr_iter(file_as_blockiter(open(file_name, 'rb')), hashlib.sha256())
     gzip_hash = hash_bytestr_iter(file_as_blockiter(open(file_name + ZIP, 'rb')), hashlib.sha256())
@@ -62,6 +66,17 @@ def compute_and_store_hash(file_name, version):
         file_name + '_compressed_hash': gzip_hash.encode('utf-8'),
         'version': version
         }
+=======
+def compute_and_store_hash(file_name):
+    f_hash = hash_bytestr_iter(file_as_blockiter(
+        open(file_name, 'rb')), hashlib.sha256())
+    gzip_hash = hash_bytestr_iter(file_as_blockiter(
+        open(file_name + ZIP, 'rb')), hashlib.sha256())
+    hashes = {
+        file_name + '_hash': f_hash.encode('utf-8'),
+        file_name + '_compressed_hash': gzip_hash.encode('utf-8')
+    }
+>>>>>>> master
     with open(file_name + REF, 'w') as ref:
         json.dump(hashes, ref)
 
@@ -87,7 +102,7 @@ def to_bool(string):
 
 
 class Strumpf:
-    
+
     def __init__(self):
         self.stage_file = os.path.join(_BASE_DIR, 'stage.txt')
         self.stage_data = set()
@@ -119,30 +134,25 @@ class Strumpf:
         with open(filepath, 'w') as f:
             json.dump(self.config, f)
 
-
     def _write_stage_files(self, filepath=None):
         if not filepath:
             filepath = self.stage_file
-        
+
         f = open(filepath, 'w')
         f.close()
         with open(filepath, 'w') as f:
             f.write("\n".join(self.stage_data))
 
-
     def set_staged_files(self, files):
         self.stage_data = set(files)
         self._write_stage_files()
 
-
     def get_staged_files(self):
         return self.stage_data
-
 
     def set_config(self, config):
         self.config.update(config)
         self._write_config()
-
 
     def get_config(self):
         return self.config
@@ -162,7 +172,6 @@ class Strumpf:
         resource_name = local_resource_folder.split('/')[-1]
         return resource_name
 
-
     def validate_config(self, config=None):
         if config is None:
             config = self.config
@@ -178,14 +187,14 @@ class Strumpf:
             for name in filenames:
                 full_path = os.path.join(path, name)
                 sizes.append(os.path.getsize(full_path))
-        return  sum(sizes), len(sizes)
+        return sum(sizes), len(sizes)
 
     def get_large_files(self, path=None):
         large_files = []
         local_dir = self.get_local_resource_dir()
         if path:
             local_dir = path
-        
+
         limit = self.get_limit_in_bytes()
         for path, _, filenames in os.walk(local_dir):
             for name in filenames:
@@ -194,7 +203,6 @@ class Strumpf:
                 if size > limit:
                     large_files.append((full_path, size))
         return large_files
-
 
     def get_tracked_files(self, relative_path=None):
         tracked_files = []
@@ -209,12 +217,10 @@ class Strumpf:
                     tracked_files.append(original_file)
         return tracked_files
 
-
     def is_file(self, path):
         local_dir = self.get_local_resource_dir()
         full_path = os.path.join(local_dir, path)
         return os.path.isfile(full_path)
-
 
     def add_file(self, full_file_path):
         # Accept path either absolute or relative to local dir
@@ -223,13 +229,12 @@ class Strumpf:
             full_file_path = os.path.join(local_dir, full_file_path)
             if not os.path.isfile(full_file_path):
                 raise RuntimeError("File cannot be found, aborting.")
-            
+
         limit = self.get_limit_in_bytes()
         size = os.path.getsize(full_file_path)
         if size > limit:
             self.stage_data = self.stage_data | set([full_file_path])
             self._write_stage_files()
-
 
     def add_path(self, path):
         path = os.path.abspath(path)
@@ -238,11 +243,10 @@ class Strumpf:
         self.stage_data = self.stage_data | set(large_files)
         self._write_stage_files()
 
-
     def compress_staged_files(self):
         files = self.get_staged_files()
         for f in files:
-            with open(f) as source, gzip.open(f + ZIP, 'wb') as dest:        
+            with open(f) as source, gzip.open(f + ZIP, 'wb') as dest:
                 dest.write(source.read())
 
     def compute_and_store_hashes(self):
@@ -268,7 +272,8 @@ class Strumpf:
         num_staged_files = len(self.get_staged_files())
         container = self.config['container_name']
         print('>>> Starting upload to Azure blob storage')
-        print('>>> A total of {} large files will be uploaded to container "{}"'.format(num_staged_files, container))
+        print('>>> A total of {} large files will be uploaded to container "{}"'.format(
+            num_staged_files, container))
 
         service = self.service_from_config()
 
@@ -284,7 +289,7 @@ class Strumpf:
                     # azure auto-generates intermediate paths
                     name = full_path.replace(local_dir + '/', '')
                     if name in blobs:
-                        confirm = input("File {} already available on Azure,".format(name) + \
+                        confirm = input("File {} already available on Azure,".format(name) +
                                         "do you want to override it? (default 'n') [y/n]: ") or 'yes'
                         upload = to_bool(confirm)
                     if upload:
@@ -292,9 +297,10 @@ class Strumpf:
                         name = full_path.replace(local_dir + '/', '')
                         service.upload_blob(name, full_path)
                         # upload reference as well
-                        service.upload_blob(name.replace(ZIP, REF), full_path.replace(ZIP, REF))
+                        service.upload_blob(name.replace(
+                            ZIP, REF), full_path.replace(ZIP, REF))
         print('>>> Upload finished')
-        
+
     def cache_and_delete(self):
         staged = self.get_staged_files()
         local_dir = self.get_local_resource_dir()
@@ -318,7 +324,6 @@ class Strumpf:
         empty_staging = []
         self.set_staged_files(empty_staging)
 
-    
     def _clear_cache(self):
         cache_dir = self.get_cache_dir()
         for file_name in os.listdir(cache_dir):
@@ -326,10 +331,11 @@ class Strumpf:
             try:
                 if os.path.isfile(file_path):
                     os.unlink(file_path)
-                elif os.path.isdir(file_path): 
+                elif os.path.isdir(file_path):
                     shutil.rmtree(file_path)
             except Exception as e:
                 print(e)
+
 
 class Service:
     # TODO: proper azure logging?
@@ -344,7 +350,8 @@ class Service:
 
     def _create_container(self, container_name):
         self.blob_service.create_container(container_name)
-        self.blob_service.set_container_acl(container_name, public_access=PublicAccess.Container)
+        self.blob_service.set_container_acl(
+            container_name, public_access=PublicAccess.Container)
 
     def _delete_container(self, container_name):
         # danger zone
@@ -375,41 +382,44 @@ class Service:
             temp_path = local_path
             for part in parts:
                 temp_path = os.path.join(temp_path, part)
-                # Note: Azure automatically creates subfolders, Python doesn't. 
+                # Note: Azure automatically creates subfolders, Python doesn't.
                 # we need to carefully create them first.
                 mkdir(temp_path)
-        
+
         ref_location = os.path.join(local_path, ref_name)
         download_location = os.path.join(local_path, file_name)
 
         download_again = True
         if os.path.isfile(ref_location) and os.path.isfile(download_location.strip(ZIP)):
-            print('>>> Found local reference and file in cache, compare to original reference.')
+            print(
+                '>>> Found local reference and file in cache, compare to original reference.')
             with open(ref_location, 'r') as ref_file:
                 dup_ref = json.loads(ref_file.read())
             if not self.strump:
                 self.strump = Strumpf()
             local_resource_path = self.strump.get_local_resource_dir()
             original_ref_location = os.path.join(local_resource_path, ref_name)
-            with open(original_ref_location , 'r') as original_file:
+            with open(original_ref_location, 'r') as original_file:
                 original_ref = json.loads(original_file.read())
             if original_ref == dup_ref:
                 download_again = False
 
         if download_again:
             print('>>> Downloading blob {}'.format(file_name))
-            self.blob_service.get_blob_to_path(self.container_name, file_name, download_location)
+            self.blob_service.get_blob_to_path(
+                self.container_name, file_name, download_location)
             # Unzip file and delete compressed version
             decompress_file(download_location, clean=True)
             # Update file reference as well
-            self.blob_service.get_blob_to_path(self.container_name, ref_name, ref_location)
+            self.blob_service.get_blob_to_path(
+                self.container_name, ref_name, ref_location)
         else:
-            print('>>> Resource file and reference already up to date, no download necessary.')
+            print(
+                '>>> Resource file and reference already up to date, no download necessary.')
 
         return download_again
-
 
     def bulk_download(self, local_path):
         blobs = self.get_all_blob_names()
         for blob in blobs:
-            self.download_blob(blob, local_path)     
+            self.download_blob(blob, local_path)
