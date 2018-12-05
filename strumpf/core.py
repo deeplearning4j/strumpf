@@ -57,28 +57,32 @@ def decompress_file(file_name, clean=True):
         os.remove(file_name)
 
 
-<<<<<<< HEAD
-def compute_and_store_hash(file_name, version):
+def get_reference_and_version(ref_file_name):
+    current_version = 0
+    ref = {}
+    if os.path.exists(ref_file_name):
+        with open(ref_file_name, 'r') as ref_file:
+            ref = json.loads(ref_file.read())
+            current_version = ref['current_version']
+    return ref, current_version
+
+
+def compute_and_store_hash(file_name):
+    ref, version = get_reference_and_version(file_name + REF)
+    new_version = version + 1
+    ref['current_version'] = new_version
+
     f_hash = hash_bytestr_iter(file_as_blockiter(open(file_name, 'rb')), hashlib.sha256())
     gzip_hash = hash_bytestr_iter(file_as_blockiter(open(file_name + ZIP, 'rb')), hashlib.sha256())
     hashes = {
         file_name + '_hash': f_hash.encode('utf-8'), 
-        file_name + '_compressed_hash': gzip_hash.encode('utf-8'),
-        'version': version
-        }
-=======
-def compute_and_store_hash(file_name):
-    f_hash = hash_bytestr_iter(file_as_blockiter(
-        open(file_name, 'rb')), hashlib.sha256())
-    gzip_hash = hash_bytestr_iter(file_as_blockiter(
-        open(file_name + ZIP, 'rb')), hashlib.sha256())
-    hashes = {
-        file_name + '_hash': f_hash.encode('utf-8'),
         file_name + '_compressed_hash': gzip_hash.encode('utf-8')
     }
->>>>>>> master
-    with open(file_name + REF, 'w') as ref:
-        json.dump(hashes, ref)
+    version_hash = {'v' + str(new_version): hashes}
+    ref.update(version_hash)
+
+    with open(file_name + REF, 'w') as ref_file:
+        json.dump(ref, ref_file)
 
 
 def hash_bytestr_iter(bytesiter, hasher, ashexstr=False):
@@ -250,13 +254,9 @@ class Strumpf:
                 dest.write(source.read())
 
     def compute_and_store_hashes(self):
-        version = 1
-        # TODO if reference already exists, load version and increment
-
-
         files = self.get_staged_files()
-        for f in files:
-            compute_and_store_hash(f, version)
+        for file_name in files:
+            compute_and_store_hash(file_name)
 
     def service_from_config(self):
         name = self.config['azure_account_name']
@@ -281,21 +281,26 @@ class Strumpf:
         files = self.get_staged_files()
         local_dir = self.get_local_resource_dir()
 
+
         for path, _, file_names in os.walk(local_dir):
             for name in file_names:
                 if name.endswith(ZIP):
                     full_path = os.path.join(path, name)
+                    ref_path = full_path.replace(ZIP, REF)
+                    ref, version = get_reference_and_version(ref_path)
+
                     upload = True
                     # azure auto-generates intermediate paths
                     name = full_path.replace(local_dir + '/', '')
-                    if name in blobs:
+                    versioned_name = name + '.v' + str(version)
+                    
+                    if versioned_name in blobs:
                         confirm = input("File {} already available on Azure,".format(name) +
-                                        "do you want to override it? (default 'n') [y/n]: ") or 'yes'
+                                        "are you sure you want to override it? (default 'n') [y/n]: ") or 'yes'
                         upload = to_bool(confirm)
                     if upload:
-                        print('   >>> uploading file {}'.format(full_path))
-                        name = full_path.replace(local_dir + '/', '')
-                        service.upload_blob(name, full_path)
+                        print('   >>> uploading file {}, version {}'.format(full_path, version))
+                        service.upload_blob(versioned_name, full_path)
                         # upload reference as well
                         service.upload_blob(name.replace(
                             ZIP, REF), full_path.replace(ZIP, REF))
@@ -346,7 +351,7 @@ class Service:
         self.blob_service = BlockBlobService(account_name, account_key)
         self.container_name = container_name
         self.blobs = self.get_all_blob_names()
-        self.strump = None
+        self.strumpf = None
 
     def _create_container(self, container_name):
         self.blob_service.create_container(container_name)
@@ -377,6 +382,16 @@ class Service:
         ref_name = original_file_name + REF
         file_name = original_file_name + ZIP
 
+        if not self.strumpf:
+            self.strumpf = Strumpf()
+        local_res_dir = self.strumpf.get_local_resource_dir()
+        ref_location = os.path.join(local_res_dir, ref_name)
+        print(ref_location)
+        download_location = os.path.join(local_path, file_name)
+        ref, version = get_reference_and_version(ref_location)
+        print(version)
+        str_version = 'v' + str(version)
+
         if '/' in file_name:
             parts = file_name.split('/')[:-1]
             temp_path = local_path
@@ -386,28 +401,24 @@ class Service:
                 # we need to carefully create them first.
                 mkdir(temp_path)
 
-        ref_location = os.path.join(local_path, ref_name)
-        download_location = os.path.join(local_path, file_name)
 
         download_again = True
         if os.path.isfile(ref_location) and os.path.isfile(download_location.strip(ZIP)):
-            print(
-                '>>> Found local reference and file in cache, compare to original reference.')
+            print('>>> Found local reference and file in cache, compare to original reference.')
             with open(ref_location, 'r') as ref_file:
                 dup_ref = json.loads(ref_file.read())
-            if not self.strump:
-                self.strump = Strumpf()
-            local_resource_path = self.strump.get_local_resource_dir()
+            local_resource_path = self.strumpf.get_local_resource_dir()
             original_ref_location = os.path.join(local_resource_path, ref_name)
             with open(original_ref_location, 'r') as original_file:
                 original_ref = json.loads(original_file.read())
-            if original_ref == dup_ref:
+            if original_ref[str_version] == dup_ref[str_version]:
                 download_again = False
 
         if download_again:
-            print('>>> Downloading blob {}'.format(file_name))
+            print('>>> Downloading blob {}, version {}'.format(file_name, version))
             self.blob_service.get_blob_to_path(
-                self.container_name, file_name, download_location)
+                # download correct version
+                self.container_name, file_name + '.' + str_version, download_location)
             # Unzip file and delete compressed version
             decompress_file(download_location, clean=True)
             # Update file reference as well
@@ -417,7 +428,7 @@ class Service:
             print(
                 '>>> Resource file and reference already up to date, no download necessary.')
 
-        return download_again
+        return download_again, version
 
     def bulk_download(self, local_path):
         blobs = self.get_all_blob_names()
