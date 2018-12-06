@@ -14,10 +14,6 @@
 # SPDX-License-Identifier: Apache-2.0
 ################################################################################
 import sys
-if sys.version_info[0] == 2:
-    input = raw_input
-    reload(sys)
-    sys.setdefaultencoding("ISO-8859-1")
 
 from .utils import _BASE_DIR
 
@@ -29,13 +25,10 @@ import json
 import gzip
 import hashlib
 import shutil
-import os
-import uuid
 import sys
 from azure.storage.blob import BlockBlobService, PublicAccess
 from azure.storage.common import CloudStorageAccount
-import json
-import glob
+
 
 REF = ".resource_reference"
 ZIP = ".gzx"
@@ -75,8 +68,8 @@ def compute_and_store_hash(file_name):
     f_hash = hash_bytestr_iter(file_as_blockiter(open(file_name, 'rb')), hashlib.sha256())
     gzip_hash = hash_bytestr_iter(file_as_blockiter(open(file_name + ZIP, 'rb')), hashlib.sha256())
     hashes = {
-        file_name + '_hash': f_hash.encode('utf-8'), 
-        file_name + '_compressed_hash': gzip_hash.encode('utf-8')
+        file_name + '_hash': f_hash, 
+        file_name + '_compressed_hash': gzip_hash
     }
     version_hash = {'v' + str(new_version): hashes}
     ref.update(version_hash)
@@ -85,7 +78,7 @@ def compute_and_store_hash(file_name):
         json.dump(ref, ref_file)
 
 
-def hash_bytestr_iter(bytesiter, hasher, ashexstr=False):
+def hash_bytestr_iter(bytesiter, hasher, ashexstr=True):
     for block in bytesiter:
         hasher.update(block)
     return (hasher.hexdigest() if ashexstr else hasher.digest())
@@ -250,7 +243,7 @@ class Strumpf:
     def compress_staged_files(self):
         files = self.get_staged_files()
         for f in files:
-            with open(f) as source, gzip.open(f + ZIP, 'wb') as dest:
+            with open(f, 'rb') as source, gzip.open(f + ZIP, 'wb') as dest:
                 dest.write(source.read())
 
     def compute_and_store_hashes(self):
