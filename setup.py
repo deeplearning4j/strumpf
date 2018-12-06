@@ -3,11 +3,11 @@ from setuptools import find_packages
 
 setup(
     name='strumpf',
-    version='0.2',
+    version='0.2.1',
     packages=find_packages(),
     install_requires=['azure', 'requests', 'click', 'argcomplete'],
     extras_require={
-        'tests': ['pytest', 'pytest-pep8', 'pytest-cov']
+        'tests': ['pytest', 'pytest-pep8', 'pytest-cov', 'mock']
     },
     include_package_data=True,
     license='Apache',
@@ -27,7 +27,6 @@ setup(
         'License :: OSI Approved :: Apache Software License',
         'Operating System :: OS Independent',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 3'
     ]
 )
