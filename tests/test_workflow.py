@@ -50,8 +50,11 @@ def test_workflow():
     _create_large_test_file(os.path.join(
         local_dir, small_path), 0)  # empty file
 
-    # Adding the small file has no effect, the large file will be added to "staged" files.
-    # The user has to provide the full file local file path to avoid misunderstandings.
+    # Adding the small file has no effect,
+    # the large file will be added to "staged" files.
+
+    # The user has to provide the full local file path
+    # to avoid misunderstandings.
     cli.add(large_a_path)
     cli.add(small_path)
 
@@ -92,21 +95,25 @@ def test_workflow():
     assert large_a + ZIP + '.v1' in blobs
     assert large_a + REF in blobs
 
-    # Confirm that original (not zipped) files and references have been cached as well
+    # Confirm that original (not zipped) files and references
+    # have been cached as well
     cache = strumpf.get_cache_dir()
     assert os.path.isfile(os.path.join(cache, large_a))
     assert not os.path.isfile(os.path.join(cache, large_a + ZIP))
     assert os.path.isfile(os.path.join(cache, large_a + REF))
 
-    # Try to download file. Since it's in cache AND hashes equal, no need to download again
+    # Try to download file. Since it's in cache AND hashes equal,
+    # no need to download again
     was_downloaded, _ = cli.download(large_a)
     assert not was_downloaded
 
-    # Now, clear cache and attempt download again. This time it will download and unzip the file
+    # Now, clear cache and attempt download again.
+    # This time it will download and unzip the file
     strumpf._clear_cache()
     assert not os.path.isfile(os.path.join(cache, large_a))
 
-    # Version 1 gets downloaded (we validate internally that it's the right hash as well)
+    # Version 1 gets downloaded
+    # (we validate internally that it's the right hash as well)
     was_downloaded, version = cli.download(large_a)
     assert was_downloaded
     assert version == 1
