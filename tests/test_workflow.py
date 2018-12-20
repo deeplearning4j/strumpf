@@ -152,5 +152,6 @@ def test_workflow():
     os.remove(small_path)
     strumpf._clear_cache()
 
+
 if __name__ == '__main__':
     pytest.main([__file__])
