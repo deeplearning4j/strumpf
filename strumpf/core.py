@@ -65,10 +65,12 @@ def compute_and_store_hash(file_name):
     new_version = version + 1
     ref['current_version'] = new_version
 
-    f_hash = hash_bytestr_iter(file_as_blockiter(open(file_name, 'rb')), hashlib.sha256())
-    gzip_hash = hash_bytestr_iter(file_as_blockiter(open(file_name + ZIP, 'rb')), hashlib.sha256())
+    f_hash = hash_bytestr_iter(file_as_blockiter(
+        open(file_name, 'rb')), hashlib.sha256())
+    gzip_hash = hash_bytestr_iter(file_as_blockiter(
+        open(file_name + ZIP, 'rb')), hashlib.sha256())
     hashes = {
-        file_name + '_hash': f_hash, 
+        file_name + '_hash': f_hash,
         file_name + '_compressed_hash': gzip_hash
     }
     version_hash = {'v' + str(new_version): hashes}
@@ -274,7 +276,6 @@ class Strumpf:
         files = self.get_staged_files()
         local_dir = self.get_local_resource_dir()
 
-
         for path, _, file_names in os.walk(local_dir):
             for name in file_names:
                 if name.endswith(ZIP):
@@ -286,13 +287,14 @@ class Strumpf:
                     # azure auto-generates intermediate paths
                     name = full_path.replace(local_dir + '/', '')
                     versioned_name = name + '.v' + str(version)
-                    
+
                     if versioned_name in blobs:
                         confirm = input("File {} already available on Azure,".format(name) +
                                         "are you sure you want to override it? (default 'n') [y/n]: ") or 'yes'
                         upload = to_bool(confirm)
                     if upload:
-                        print('   >>> uploading file {}, version {}'.format(full_path, version))
+                        print('   >>> uploading file {}, version {}'.format(
+                            full_path, version))
                         service.upload_blob(versioned_name, full_path)
                         # upload reference as well
                         service.upload_blob(name.replace(
@@ -394,10 +396,10 @@ class Service:
                 # we need to carefully create them first.
                 mkdir(temp_path)
 
-
         download_again = True
         if os.path.isfile(ref_location) and os.path.isfile(download_location.strip(ZIP)):
-            print('>>> Found local reference and file in cache, compare to original reference.')
+            print(
+                '>>> Found local reference and file in cache, compare to original reference.')
             with open(ref_location, 'r') as ref_file:
                 dup_ref = json.loads(ref_file.read())
             local_resource_path = self.strumpf.get_local_resource_dir()
