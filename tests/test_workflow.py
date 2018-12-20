@@ -3,6 +3,7 @@ import os
 import mock
 from strumpf.cli import CLI
 from strumpf.core import ZIP, REF
+from strumpf.client import get_url
 
 _STRUMPF = None
 
@@ -136,6 +137,14 @@ def test_workflow():
     was_downloaded, version = cli.download(large_a)
     assert was_downloaded
     assert version == 2
+
+    # Lastly, if a user wants to use a test resources, we need to provide a
+    # test resource URL, given the original file name
+    url = get_url(large_a)
+
+    # Test the url by opening the file
+    with open(url, 'r') as f:
+        f.read
 
     # Cleaning up
     os.remove(large_a_path + REF)
