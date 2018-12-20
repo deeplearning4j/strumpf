@@ -3,7 +3,7 @@ import os
 import mock
 from strumpf.cli import CLI
 from strumpf.core import ZIP, REF
-from strumpf.client import get_url
+from strumpf.client import get_file
 
 _STRUMPF = None
 
@@ -140,7 +140,7 @@ def test_workflow():
 
     # Lastly, if a user wants to use a test resources, we need to provide a
     # test resource URL, given the original file name
-    url = get_url(large_a)
+    url = get_file(large_a)
 
     # Test the url by opening the file
     with open(url, 'r') as f:
