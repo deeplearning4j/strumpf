@@ -108,3 +108,41 @@ venv.bak/
 
 # test configuration (contains azure password)
 config.json
+
+
+### Intellij ###
+# Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm, CLion, Android Studio and Webstorm
+# Reference: https://intellij-support.jetbrains.com/hc/en-us/articles/206544839
+
+# User-specific stuff:
+java/.idea
+java/.idea/**/workspace.xml
+java/.idea/**/tasks.xml
+java/.idea/dictionaries
+
+# Sensitive or high-churn files:
+java/.idea/**/dataSources/
+java/.idea/**/dataSources.ids
+java/.idea/**/dataSources.xml
+java/.idea/**/dataSources.local.xml
+java/.idea/**/sqlDataSources.xml
+java/.idea/**/dynamic.xml
+java/.idea/**/uiDesigner.xml
+
+# Gradle:
+java/.idea/**/gradle.xml
+java/.idea/**/libraries
+
+# Mongo Explorer plugin:
+java/.idea/**/mongoSettings.xml
+
+## File-based project format:
+*.iws
+
+## Plugin-specific files:
+
+# IntelliJ
+/out/
+
+# mpeltonen/sbt-idea plugin
+.idea_modules/

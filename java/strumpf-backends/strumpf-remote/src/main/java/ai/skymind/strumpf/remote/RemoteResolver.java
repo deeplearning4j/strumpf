@@ -78,7 +78,7 @@ public class RemoteResolver implements Resolver {
                 //Check for reference file:
                 File f2 = new File(s, resourcePath + REF);
                 if(f2.exists() && f2.isFile()){
-                    //OK - found resource reference. Need to download
+                    //OK - found resource reference. Need to download to local cache... and/or validate what we have in cache
 
                 }
             }

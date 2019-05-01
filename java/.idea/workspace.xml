@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="1e9f8442-df83-4c15-94d3-89c672ebf2a9" name="Default Changelist" comment="" />
+    <list default="true" id="1e9f8442-df83-4c15-94d3-89c672ebf2a9" name="Default Changelist" comment="">
+      <change beforePath="$PROJECT_DIR$/strumpf-backends/strumpf-remote/src/main/java/ai/skymind/strumpf/remote/RemoteResolver.java" beforeDir="false" afterPath="$PROJECT_DIR$/strumpf-backends/strumpf-remote/src/main/java/ai/skymind/strumpf/remote/RemoteResolver.java" afterDir="false" />
+    </list>
     <ignored path="$PROJECT_DIR$/out/" />
     <ignored path="$PROJECT_DIR$/target/" />
     <ignored path="$PROJECT_DIR$/strumpf-api/target/" />
@@ -85,15 +87,28 @@
               </provider>
             </entry>
           </file>
-          <file pinned="false" current-in-tab="true">
+          <file pinned="false" current-in-tab="false">
             <entry file="file://$PROJECT_DIR$/strumpf-backends/strumpf-remote/src/main/java/ai/skymind/strumpf/remote/RemoteResolver.java">
               <provider selected="true" editor-type-id="text-editor">
-                <state relative-caret-position="771">
-                  <caret line="80" column="69" selection-start-line="80" selection-start-column="69" selection-end-line="80" selection-end-column="69" />
+                <state relative-caret-position="1377">
+                  <caret line="81" lean-forward="true" selection-start-line="81" selection-end-line="81" />
                   <folding>
                     <element signature="imports" expanded="true" />
                     <element signature="e#835#836#0" expanded="true" />
-                    <element signature="e#2914#2915#0" expanded="true" />
+                    <element signature="e#2970#2971#0" expanded="true" />
+                  </folding>
+                </state>
+              </provider>
+            </entry>
+          </file>
+          <file pinned="false" current-in-tab="true">
+            <entry file="file://$PROJECT_DIR$/strumpf-api/src/main/java/ai/skymind/strumpf/ResourceFile.java">
+              <provider selected="true" editor-type-id="text-editor">
+                <state relative-caret-position="187">
+                  <caret line="11" lean-forward="true" selection-start-line="11" selection-end-line="11" />
+                  <folding>
+                    <element signature="e#136#137#0" expanded="true" />
+                    <element signature="e#168#169#0" expanded="true" />
                   </folding>
                 </state>
               </provider>
@@ -141,6 +156,7 @@
         <option value="$PROJECT_DIR$/strumpf-api/src/main/java/ai/skymind/strumpf/Resolver.java" />
         <option value="$PROJECT_DIR$/strumpf-backends/strumpf-remote/pom.xml" />
         <option value="$PROJECT_DIR$/strumpf-backends/strumpf-remote/src/main/java/ai/skymind/strumpf/remote/RemoteResolver.java" />
+        <option value="$PROJECT_DIR$/strumpf-api/src/main/java/ai/skymind/strumpf/ResourceFile.java" />
       </list>
     </option>
   </component>
@@ -266,6 +282,7 @@
     </panes>
   </component>
   <component name="PropertiesComponent">
+    <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
     <property name="WebServerToolWindowFactoryState" value="false" />
     <property name="aspect.path.notification.shown" value="true" />
     <property name="nodejs_interpreter_path.stuck_in_default_project" value="undefined stuck path" />
@@ -294,16 +311,15 @@
       <option name="presentableId" value="Default" />
       <updated>1556682504780</updated>
       <workItem from="1556682507958" duration="33000" />
-      <workItem from="1556682596874" duration="6334000" />
+      <workItem from="1556682596874" duration="7811000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="6367000" />
+    <option name="totallyTimeSpent" value="7844000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="-7" y="-7" width="3086" height="1702" extended-state="6" />
-    <editor active="true" />
     <layout>
       <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.2514871" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
@@ -402,12 +418,23 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/strumpf-backends/strumpf-remote/src/main/java/ai/skymind/strumpf/remote/RemoteResolver.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="771">
-          <caret line="80" column="69" selection-start-line="80" selection-start-column="69" selection-end-line="80" selection-end-column="69" />
+        <state relative-caret-position="1377">
+          <caret line="81" lean-forward="true" selection-start-line="81" selection-end-line="81" />
           <folding>
             <element signature="imports" expanded="true" />
             <element signature="e#835#836#0" expanded="true" />
-            <element signature="e#2914#2915#0" expanded="true" />
+            <element signature="e#2970#2971#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/strumpf-api/src/main/java/ai/skymind/strumpf/ResourceFile.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="187">
+          <caret line="11" lean-forward="true" selection-start-line="11" selection-end-line="11" />
+          <folding>
+            <element signature="e#136#137#0" expanded="true" />
+            <element signature="e#168#169#0" expanded="true" />
           </folding>
         </state>
       </provider>
