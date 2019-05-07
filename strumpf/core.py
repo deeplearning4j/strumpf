@@ -110,7 +110,7 @@ class Strumpf:
             'azure_account_name': 'dl4jtestresources',
             'file_size_limit_in_mb': '1',
             'container_name': 'resources',
-            'cache_directory': _BASE_DIR + '/src'
+            'cache_directory': os.path.join(_BASE_DIR, 'src')
         }
 
         if os.path.isfile(self.stage_file):
@@ -168,7 +168,7 @@ class Strumpf:
 
     def get_context_from_config(self):
         local_resource_folder = self.config['local_resource_folder']
-        resource_name = local_resource_folder.split('/')[-1]
+        resource_name = local_resource_folder.split(os.sep)[-1]
         return resource_name
 
     def validate_config(self, config=None):
@@ -286,8 +286,8 @@ class Strumpf:
                     ref, version = get_reference_and_version(ref_path)
 
                     upload = True
-                    # azure auto-generates intermediate paths
-                    name = full_path.replace(local_dir + '/', '')
+                    # azure auto-generates intermediate paths, strip the local dir
+                    name = os.path.relpath(full_path, local_dir)
                     versioned_name = name + '.v' + str(version)
 
                     if versioned_name in blobs:
@@ -383,14 +383,12 @@ class Service:
             self.strumpf = Strumpf()
         local_res_dir = self.strumpf.get_local_resource_dir()
         ref_location = os.path.join(local_res_dir, ref_name)
-        print(ref_location)
         download_location = os.path.join(local_path, file_name)
         ref, version = get_reference_and_version(ref_location)
-        print(version)
         str_version = 'v' + str(version)
 
-        if '/' in file_name:
-            parts = file_name.split('/')[:-1]
+        if os.sep in file_name:
+            parts = file_name.split(os.sep)[:-1]
             temp_path = local_path
             for part in parts:
                 temp_path = os.path.join(temp_path, part)
