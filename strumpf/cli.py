@@ -228,7 +228,7 @@ class CLI(object):
                                                         '      (file size: ' + str(int(untracked[1])/(1024*1024)) + ' mb)', fg="red", bold=False))
                 click.echo('\n')
         else:
-            click.echo('No large files available for upload')
+            click.echo(' No large files available for upload')
 
         large_file_size = sum(s[1] for s in large_files) / (1024*1024)
         total_file_size, total_files = self.strumpf.get_total_file_size()
@@ -287,6 +287,10 @@ class CLI(object):
                 print(project)
 
     def set_project(self, project):
+        projects = self.strumpf.get_all_contexts()
+        if project not in projects:
+            raise Exception("Project {} not found. Make sure the project you want is listed by 'strumpf projects'".format(project))
+
         config = self.strumpf.load_config(os.path.join(_BASE_DIR, '{}.json'.format(project)))
         self.strumpf.set_config(config)
         set_context(self.strumpf.get_context_from_config())
