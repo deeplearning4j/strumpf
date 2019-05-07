@@ -32,6 +32,8 @@ python setup.py install
 Installing Strumpf exposes a command line tool called `strumpf`. You can use this tool to configure
 your test environment. To initialize a new Strumpf configuration, type
 
+### Configuration
+
 ```bash
 strumpf configure
 
@@ -46,10 +48,10 @@ strumpf configure
 ...
 ```
 
-Most importantly, Strumpf will ask you for your local resource folder (full path) that you want to track and
-Azure credentials for a blob storage account. After providing all information, you can change into your
+First, Strumpf will ask you what the project you want to track is called, where your local resources are stored (full path to folder), and Azure credentials for a blob storage account. After providing all information, you can change into your
 test resource directory and query its status using `strumpf status`, which will prompt git-like information:
 
+- it prompts which project you use (below "dl4j")
 - it tells you about your untracked large files
 - it shows you which large files have been modified
 - it tells you which large files are already staged for upload
@@ -59,6 +61,7 @@ An example output would look as follows:
 ```
 strumpf status
 
+>>> Working on project dl4j
  Changes to be uploaded:
  (use "strumpf reset <file>..." to unstage files)
 
@@ -71,12 +74,14 @@ strumpf status
         /home/max/code/strumpf-test-folder/test.jar
 
 ```
+### Tracking large files
 
-Next, to add files to strumpf tracking system you use `strumpf add -p <file or path>`, to track all
-large files recently added in your test folder you could for instance issue the command `strumpf add -p .`.
-All files should be added relative to the test folder you're working with.
+Next, to add files to strumpf tracking system you use `strumpf add <file or path>`, to track all
+large files recently added in your test folder you could for instance issue the command `strumpf add .`. You can either use absolute paths, or paths relative to the test folder you're working with.
 
-To see the effect of adding files you can query the status afterwards again to see that your previously untracked or modified files are now staged for upload by strumpf.
+To see the effect of adding files you can query `strumpf status` afterwards again to see that your previously untracked or modified files are now staged for upload by strumpf.
+
+### Uploading files
 
 The final step is `strumpf upload`, which does several things for you:
 
@@ -85,6 +90,8 @@ The final step is `strumpf upload`, which does several things for you:
 - The compressed files will be uploaded to Azure blob storage. The original files will be moved to a local caching folder.
 - After completion of the upload, all large files will be removed locally and only _references_ to them will be kept, including the file hashes.
 - Your large files are now hosted externally on Azure and you can git commit the file references instead.
+
+### Downloading files
 
 To download a file using the CLI, you use
 
@@ -99,4 +106,19 @@ Finally, to download all available remote resource files, use:
 
 ```
 strumpf bulk_download
-``` 
+```
+
+### Changing projects
+
+Should you have multiple projects you want to track with Strumpf, you
+can do that quite easily. For instance, if you want to add a new project, simply use `strumpf configure` again and use a different project name and configuration as required. You can check at any point which projects are currently tracked by Strumpf by typing
+
+```bash
+strumpf projects
+```
+
+To switch to another project, simply use
+
+```bash
+strumpf set_project <project>
+```

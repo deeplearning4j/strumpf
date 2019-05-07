@@ -29,7 +29,7 @@ from click.exceptions import ClickException
 from dateutil import parser
 
 from . import core
-from .utils import set_context
+from .utils import set_context, _BASE_DIR
 
 if sys.version_info[0] == 2:
     input = raw_input
@@ -67,8 +67,7 @@ class CLI(object):
         subparsers.add_parser('status', help='Get strumpf status.')
         file_add_parser = subparsers.add_parser(
             'add', help='Add files to strumpf tracking system.')
-        file_add_parser.add_argument(
-            '-p', '--path', help='Path or file to add to upload.')
+        file_add_parser.add_argument('path', type=str, nargs='+', help='Path or file to add to upload.')
 
         subparsers.add_parser('upload', help='Upload files to remote source.')
 
@@ -80,6 +79,10 @@ class CLI(object):
 
         subparsers.add_parser('reset', help='Reset previously staged files.')
         subparsers.add_parser('blobs', help='List all relevant Azure blobs.')
+        subparsers.add_parser('projects', help='List all projects tracked by Strumpf.')
+
+        project_parser = subparsers.add_parser('set_project', help='Set a project tracked by Strumpf as default.')
+        project_parser.add_argument('project', type=str, nargs='?', help='The project you want to set.')
 
         argcomplete.autocomplete(parser)
         args = parser.parse_args(args)
@@ -100,7 +103,8 @@ class CLI(object):
             return
 
         if self.command == 'add':
-            self.add(self.var_args['path'])
+            paths = self.var_args['path']
+            self.add(paths)
             return
 
         if self.command == 'upload':
@@ -120,6 +124,14 @@ class CLI(object):
         if self.command == 'blobs':
             self.blobs()
 
+        if self.command == 'projects':
+            self.projects()
+
+        if self.command == 'set_project':
+            project = self.var_args['project']
+            self.set_project(project)
+            return
+
     def configure(self):
 
         click.echo(click.style(u"""\n███████╗████████╗██████╗ ██╗   ██╗███╗   ███╗██████╗ ███████╗
@@ -132,32 +144,31 @@ class CLI(object):
         click.echo(click.style("strumpf", bold=True) +
                    " is Skymind's test resource management tool for exceedingly large files!\n")
 
-        # Storage account name
+        project_name = input("What's the name of this project? You can address existing projects by name: ")
+
         account_name = input("Specify tour Azure storage account name (default '%s'): " %
                              self.default_account_name) or self.default_account_name
 
-        # Storage account key
         account_key = input("Please specify the respective account key: ")
 
-        # Container name
         container_name = input("Which blob storage container should be used (default '%s'): " %
                                self.default_container_name) or self.default_container_name
 
-        # File size limit
         file_limit = input("Strumpf uploads large files to Azure instead of checking them into git," +
                            "from which file size in MB on should we upload your files (default '%s' MB): " %
                            self.default_file_size_in_mb) or self.default_file_size_in_mb
 
-        # Local resource folder
         local_resource_folder = input(
             "Please specify the full path to the resource folder you want to track: ")
 
         cli_out = {
+            'project_name': project_name,
             'azure_account_name': account_name,
             'azure_account_key': account_key,
             'file_size_limit_in_mb': file_limit,
             'container_name': container_name,
-            'local_resource_folder': local_resource_folder
+            'local_resource_folder': local_resource_folder,
+            'cache_directory': os.path.join(_BASE_DIR, project_name)
         }
 
         self.strumpf.validate_config(cli_out)
@@ -179,6 +190,8 @@ class CLI(object):
         set_context(self.strumpf.get_context_from_config())
 
     def status(self):
+        click.echo('>>> Working on project {}'.format((self.strumpf.get_context_from_config())))
+
         large_files = self.strumpf.get_large_files()
         tracked_files = self.strumpf.get_tracked_files()
         staged_files = self.strumpf.get_staged_files()
@@ -230,11 +243,12 @@ class CLI(object):
         click.echo("Total number of files left after upload: {}, number of files to upload {}".format(
             files_left, len(large_files)))
 
-    def add(self, path):
-        if self.strumpf.is_file(path):
-            self.strumpf.add_file(path)
-        else:
-            self.strumpf.add_path(path)
+    def add(self, path_list):
+        for path in path_list:
+            if self.strumpf.is_file(path):
+                self.strumpf.add_file(path)
+            else:
+                self.strumpf.add_path(path)
 
     def upload(self):
         print('>>> Compressing staged files')
@@ -264,6 +278,22 @@ class CLI(object):
     def blobs(self):
         service = self.strumpf.service_from_config()
         service.list_all_blobs()
+
+    def projects(self):
+        projects = self.strumpf.get_all_contexts()
+        if projects:
+            print('>>> Currently tracked Strumpf projects:')
+            for project in projects:
+                print(project)
+
+    def set_project(self, project):
+        projects = self.strumpf.get_all_contexts()
+        if project not in projects:
+            raise Exception("Project {} not found. Make sure the project you want is listed by 'strumpf projects'".format(project))
+
+        config = self.strumpf.load_config(os.path.join(_BASE_DIR, '{}.json'.format(project)))
+        self.strumpf.set_config(config)
+        set_context(self.strumpf.get_context_from_config())
 
 
 def handle():

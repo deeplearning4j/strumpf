@@ -15,7 +15,7 @@
 ################################################################################
 import sys
 
-from .utils import _BASE_DIR
+from .utils import _BASE_DIR, get_dir
 
 import platform
 import os
@@ -60,26 +60,6 @@ def get_reference_and_version(ref_file_name):
     return ref, current_version
 
 
-def compute_and_store_hash(file_name):
-    ref, version = get_reference_and_version(file_name + REF)
-    new_version = version + 1
-    ref['current_version'] = new_version
-
-    f_hash = hash_bytestr_iter(file_as_blockiter(
-        open(file_name, 'rb')), hashlib.sha256())
-    gzip_hash = hash_bytestr_iter(file_as_blockiter(
-        open(file_name + ZIP, 'rb')), hashlib.sha256())
-    hashes = {
-        file_name + '_hash': f_hash,
-        file_name + '_compressed_hash': gzip_hash
-    }
-    version_hash = {'v' + str(new_version): hashes}
-    ref.update(version_hash)
-
-    with open(file_name + REF, 'w') as ref_file:
-        json.dump(ref, ref_file)
-
-
 def hash_bytestr_iter(bytesiter, hasher, ashexstr=True):
     for block in bytesiter:
         hasher.update(block)
@@ -109,8 +89,7 @@ class Strumpf:
         self.config = {
             'azure_account_name': 'dl4jtestresources',
             'file_size_limit_in_mb': '1',
-            'container_name': 'resources',
-            'cache_directory': _BASE_DIR + '/src'
+            'container_name': 'resources'
         }
 
         if os.path.isfile(self.stage_file):
@@ -126,6 +105,12 @@ class Strumpf:
                 self.config.update(json.load(f))
         else:
             self._write_config()
+
+    def load_config(self, config=None):
+        if not config:
+            config = self.config_file
+        with open(config, 'r') as f:
+            return json.load(f)
 
     def _write_config(self, filepath=None):
         if not filepath:
@@ -152,6 +137,7 @@ class Strumpf:
     def set_config(self, config):
         self.config.update(config)
         self._write_config()
+        self._write_config(os.path.join(_BASE_DIR, '{}.json'.format(self.get_context_from_config())))
 
     def get_config(self):
         return self.config
@@ -167,17 +153,17 @@ class Strumpf:
         return self.config['cache_directory']
 
     def get_context_from_config(self):
-        local_resource_folder = self.config['local_resource_folder']
-        resource_name = local_resource_folder.split('/')[-1]
-        return resource_name
+        return self.config['project_name']
 
     def validate_config(self, config=None):
         if config is None:
             config = self.config
 
-    def _get_all_contexts(self):
-        c = os.listdir(_BASE_DIR)
-        return [x for x in c if x.startswith('strumpf')]
+    def get_all_contexts(self):
+        base_files = os.listdir(_BASE_DIR)
+        json_files = [x for x in base_files if x.endswith(".json")]
+        json_files.remove('config.json')
+        return [j.replace('.json', '') for j in json_files]
 
     def get_total_file_size(self):
         local_dir = self.get_local_resource_dir()
@@ -216,19 +202,21 @@ class Strumpf:
                     tracked_files.append(original_file)
         return tracked_files
 
+    def full_path(self, path):
+        local_dir = self.get_local_resource_dir()
+        if local_dir not in path:
+            path = os.path.join(local_dir, path)
+        return path
+
     def is_file(self, path):
-        local_dir = self.get_local_resource_dir()
-        full_path = os.path.join(local_dir, path)
-        return os.path.isfile(full_path)
+        full_path = self.full_path(path)
+        return os.path.isfile(path)
 
-    def add_file(self, full_file_path):
-        # Accept path either absolute or relative to local dir
+    def add_file(self, file_path):
         local_dir = self.get_local_resource_dir()
-        if not os.path.isfile(full_file_path) and local_dir not in full_file_path:
-            full_file_path = os.path.join(local_dir, full_file_path)
-            if not os.path.isfile(full_file_path):
-                raise RuntimeError("File cannot be found, aborting.")
-
+        full_file_path = self.full_path(file_path)
+        if not os.path.isfile(full_file_path):
+            raise Exception("Could not find local resource {} in resource folder {}, aborting".format(full_file_path, local_dir))  
         limit = self.get_limit_in_bytes()
         size = os.path.getsize(full_file_path)
         if size > limit:
@@ -236,6 +224,7 @@ class Strumpf:
             self._write_stage_files()
 
     def add_path(self, path):
+        print(path)
         path = os.path.abspath(path)
         large_files = self.get_large_files(path)
         large_files = [f[0] for f in large_files]
@@ -251,7 +240,29 @@ class Strumpf:
     def compute_and_store_hashes(self):
         files = self.get_staged_files()
         for file_name in files:
-            compute_and_store_hash(file_name)
+            self.compute_and_store_hash(file_name)
+
+    def compute_and_store_hash(self, file_name):
+        ref, version = get_reference_and_version(file_name + REF)
+        new_version = version + 1
+        ref['current_version'] = new_version
+
+        f_hash = hash_bytestr_iter(file_as_blockiter(
+            open(file_name, 'rb')), hashlib.sha256())
+        gzip_hash = hash_bytestr_iter(file_as_blockiter(
+            open(file_name + ZIP, 'rb')), hashlib.sha256())
+        local_dir = self.get_local_resource_dir()
+        rel_name = os.path.relpath(file_name, local_dir)
+        hashes = {
+            rel_name + '_hash': f_hash,
+            rel_name + '_compressed_hash': gzip_hash
+        }
+        version_hash = {'v' + str(new_version): hashes}
+        ref.update(version_hash)
+
+        with open(file_name + REF, 'w') as ref_file:
+            json.dump(ref, ref_file)
+
 
     def service_from_config(self):
         name = self.config['azure_account_name']
@@ -284,13 +295,13 @@ class Strumpf:
                     ref, version = get_reference_and_version(ref_path)
 
                     upload = True
-                    # azure auto-generates intermediate paths
-                    name = full_path.replace(local_dir + '/', '')
+                    # azure auto-generates intermediate paths, strip the local dir
+                    name = os.path.relpath(full_path, local_dir)
                     versioned_name = name + '.v' + str(version)
 
                     if versioned_name in blobs:
-                        confirm = input("File {} already available on Azure,".format(name) +
-                                        "are you sure you want to override it? (default 'n') [y/n]: ") or 'yes'
+                        confirm = input("File {} already available on Azure,".format(versioned_name) +
+                                        "are you sure you want to override it? [y/n]: ") or 'yes'
                         upload = to_bool(confirm)
                     if upload:
                         print('   >>> uploading file {}, version {}'.format(
@@ -381,14 +392,12 @@ class Service:
             self.strumpf = Strumpf()
         local_res_dir = self.strumpf.get_local_resource_dir()
         ref_location = os.path.join(local_res_dir, ref_name)
-        print(ref_location)
         download_location = os.path.join(local_path, file_name)
         ref, version = get_reference_and_version(ref_location)
-        print(version)
         str_version = 'v' + str(version)
 
-        if '/' in file_name:
-            parts = file_name.split('/')[:-1]
+        if os.sep in file_name:
+            parts = file_name.split(os.sep)[:-1]
             temp_path = local_path
             for part in parts:
                 temp_path = os.path.join(temp_path, part)
