@@ -89,8 +89,7 @@ class Strumpf:
         self.config = {
             'azure_account_name': 'dl4jtestresources',
             'file_size_limit_in_mb': '1',
-            'container_name': 'resources',
-            'cache_directory': os.path.join(_BASE_DIR, 'src')
+            'container_name': 'resources'
         }
 
         if os.path.isfile(self.stage_file):
@@ -132,6 +131,7 @@ class Strumpf:
     def set_config(self, config):
         self.config.update(config)
         self._write_config()
+        # TODO write project specific file
 
     def get_config(self):
         return self.config
@@ -147,9 +147,7 @@ class Strumpf:
         return self.config['cache_directory']
 
     def get_context_from_config(self):
-        local_resource_folder = self.config['local_resource_folder']
-        resource_name = local_resource_folder.split(os.sep)[-1]
-        return resource_name
+        return self.config['project_name']
 
     def validate_config(self, config=None):
         if config is None:
@@ -218,6 +216,7 @@ class Strumpf:
             self._write_stage_files()
 
     def add_path(self, path):
+        print(path)
         path = os.path.abspath(path)
         large_files = self.get_large_files(path)
         large_files = [f[0] for f in large_files]

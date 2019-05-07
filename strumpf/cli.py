@@ -29,7 +29,7 @@ from click.exceptions import ClickException
 from dateutil import parser
 
 from . import core
-from .utils import set_context
+from .utils import set_context, _BASE_DIR
 
 if sys.version_info[0] == 2:
     input = raw_input
@@ -132,32 +132,31 @@ class CLI(object):
         click.echo(click.style("strumpf", bold=True) +
                    " is Skymind's test resource management tool for exceedingly large files!\n")
 
-        # Storage account name
+        project_name = input("What's the name of this project? You can address existing projects by name")
+
         account_name = input("Specify tour Azure storage account name (default '%s'): " %
                              self.default_account_name) or self.default_account_name
 
-        # Storage account key
         account_key = input("Please specify the respective account key: ")
 
-        # Container name
         container_name = input("Which blob storage container should be used (default '%s'): " %
                                self.default_container_name) or self.default_container_name
 
-        # File size limit
         file_limit = input("Strumpf uploads large files to Azure instead of checking them into git," +
                            "from which file size in MB on should we upload your files (default '%s' MB): " %
                            self.default_file_size_in_mb) or self.default_file_size_in_mb
 
-        # Local resource folder
         local_resource_folder = input(
             "Please specify the full path to the resource folder you want to track: ")
 
         cli_out = {
+            'project_name': project_name,
             'azure_account_name': account_name,
             'azure_account_key': account_key,
             'file_size_limit_in_mb': file_limit,
             'container_name': container_name,
-            'local_resource_folder': local_resource_folder
+            'local_resource_folder': local_resource_folder,
+            'cache_directory': os.path.join(_BASE_DIR, project_name)
         }
 
         self.strumpf.validate_config(cli_out)

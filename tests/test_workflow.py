@@ -46,18 +46,17 @@ def test_workflow():
     large_b_path = os.path.join(local_dir, large_b)
     small_path = os.path.join(local_dir, small)
 
-    _create_large_test_file(os.path.join(local_dir, large_a_path), 2 * limit)
-    _create_large_test_file(os.path.join(local_dir, large_b_path), 2 * limit)
-    _create_large_test_file(os.path.join(
-        local_dir, small_path), 0)  # empty file
+    _create_large_test_file(large_a_path, 2 * limit)
+    _create_large_test_file(large_b_path, 2 * limit)
+    _create_large_test_file(small_path, 0)  # empty file
 
     # Adding the small file has no effect,
     # the large file will be added to "staged" files.
 
     # The user has to provide the full local file path
     # to avoid misunderstandings.
-    cli.add(large_a_path)
-    cli.add(small_path)
+    cli.add([large_a_path])
+    cli.add([small_path])
 
     cli.status()
     staged_files = strumpf.get_staged_files()
@@ -65,7 +64,7 @@ def test_workflow():
     assert large_a_path in staged_files
 
     # Adding the base path also works and will add all files
-    cli.add(local_dir)
+    cli.add([local_dir])
 
     # Now all large files are staged.
     staged_files = strumpf.get_staged_files()
@@ -122,7 +121,7 @@ def test_workflow():
 
     # Finally, create an updated version of "large_a" and upload it again.
     _create_large_test_file(os.path.join(local_dir, large_a_path), 2 * limit)
-    cli.add(large_a_path)
+    cli.add([large_a_path])
     with mock.patch('strumpf.core.input', return_value='y'):
         cli.upload()
 
