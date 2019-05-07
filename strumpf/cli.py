@@ -67,7 +67,7 @@ class CLI(object):
         subparsers.add_parser('status', help='Get strumpf status.')
         file_add_parser = subparsers.add_parser(
             'add', help='Add files to strumpf tracking system.')
-        file_add_parser.add_argument('path', type=str, nargs='?', help='Path or file to add to upload.')
+        file_add_parser.add_argument('path', type=str, nargs='+', help='Path or file to add to upload.')
 
         subparsers.add_parser('upload', help='Upload files to remote source.')
 
@@ -99,7 +99,8 @@ class CLI(object):
             return
 
         if self.command == 'add':
-            self.add(self.var_args['path'])
+            paths = self.var_args['path']
+            self.add(paths)
             return
 
         if self.command == 'upload':
@@ -229,11 +230,12 @@ class CLI(object):
         click.echo("Total number of files left after upload: {}, number of files to upload {}".format(
             files_left, len(large_files)))
 
-    def add(self, path):
-        if self.strumpf.is_file(path):
-            self.strumpf.add_file(path)
-        else:
-            self.strumpf.add_path(path)
+    def add(self, path_list):
+        for path in path_list:
+            if self.strumpf.is_file(path):
+                self.strumpf.add_file(path)
+            else:
+                self.strumpf.add_path(path)
 
     def upload(self):
         print('>>> Compressing staged files')

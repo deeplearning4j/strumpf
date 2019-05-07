@@ -216,19 +216,21 @@ class Strumpf:
                     tracked_files.append(original_file)
         return tracked_files
 
+    def full_path(self, path):
+        local_dir = self.get_local_resource_dir()
+        if local_dir not in path:
+            path = os.path.join(local_dir, path)
+        return path
+
     def is_file(self, path):
-        local_dir = self.get_local_resource_dir()
-        full_path = os.path.join(local_dir, path)
-        return os.path.isfile(full_path)
+        full_path = self.full_path(path)
+        return os.path.isfile(path)
 
-    def add_file(self, full_file_path):
-        # Accept path either absolute or relative to local dir
+    def add_file(self, file_path):
         local_dir = self.get_local_resource_dir()
-        if not os.path.isfile(full_file_path) and local_dir not in full_file_path:
-            full_file_path = os.path.join(local_dir, full_file_path)
-            if not os.path.isfile(full_file_path):
-                raise RuntimeError("File cannot be found, aborting.")
-
+        full_file_path = self.full_path(file_path)
+        if not os.path.isfile(full_file_path):
+            raise Exception("Could not find local resource {} in resource folder {}, aborting".format(full_file_path, local_dir))  
         limit = self.get_limit_in_bytes()
         size = os.path.getsize(full_file_path)
         if size > limit:
