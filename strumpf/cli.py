@@ -79,6 +79,10 @@ class CLI(object):
 
         subparsers.add_parser('reset', help='Reset previously staged files.')
         subparsers.add_parser('blobs', help='List all relevant Azure blobs.')
+        subparsers.add_parser('projects', help='List all projects tracked by Strumpf.')
+
+        project_parser = subparsers.add_parser('set_project', help='Set a project tracked by Strumpf as default.')
+        project_parser.add_argument('project', type=str, nargs='?', help='The project you want to set.')
 
         argcomplete.autocomplete(parser)
         args = parser.parse_args(args)
@@ -120,6 +124,14 @@ class CLI(object):
         if self.command == 'blobs':
             self.blobs()
 
+        if self.command == 'projects':
+            self.projects()
+
+        if self.command == 'set_project':
+            project = self.var_args['project']
+            self.set_project(project)
+            return
+
     def configure(self):
 
         click.echo(click.style(u"""\n███████╗████████╗██████╗ ██╗   ██╗███╗   ███╗██████╗ ███████╗
@@ -132,7 +144,7 @@ class CLI(object):
         click.echo(click.style("strumpf", bold=True) +
                    " is Skymind's test resource management tool for exceedingly large files!\n")
 
-        project_name = input("What's the name of this project? You can address existing projects by name")
+        project_name = input("What's the name of this project? You can address existing projects by name: ")
 
         account_name = input("Specify tour Azure storage account name (default '%s'): " %
                              self.default_account_name) or self.default_account_name
@@ -178,6 +190,8 @@ class CLI(object):
         set_context(self.strumpf.get_context_from_config())
 
     def status(self):
+        click.echo('>>> Working on project {}'.format((self.strumpf.get_context_from_config())))
+
         large_files = self.strumpf.get_large_files()
         tracked_files = self.strumpf.get_tracked_files()
         staged_files = self.strumpf.get_staged_files()
@@ -214,7 +228,7 @@ class CLI(object):
                                                         '      (file size: ' + str(int(untracked[1])/(1024*1024)) + ' mb)', fg="red", bold=False))
                 click.echo('\n')
         else:
-            click.echo(' No large files available for upload')
+            click.echo('No large files available for upload')
 
         large_file_size = sum(s[1] for s in large_files) / (1024*1024)
         total_file_size, total_files = self.strumpf.get_total_file_size()
@@ -264,6 +278,18 @@ class CLI(object):
     def blobs(self):
         service = self.strumpf.service_from_config()
         service.list_all_blobs()
+
+    def projects(self):
+        projects = self.strumpf.get_all_contexts()
+        if projects:
+            print('>>> Currently tracked Strumpf projects:')
+            for project in projects:
+                print(project)
+
+    def set_project(self, project):
+        config = self.strumpf.load_config(os.path.join(_BASE_DIR, '{}.json'.format(project)))
+        self.strumpf.set_config(config)
+        set_context(self.strumpf.get_context_from_config())
 
 
 def handle():

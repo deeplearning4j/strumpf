@@ -15,7 +15,7 @@
 ################################################################################
 import sys
 
-from .utils import _BASE_DIR
+from .utils import _BASE_DIR, get_dir
 
 import platform
 import os
@@ -106,6 +106,12 @@ class Strumpf:
         else:
             self._write_config()
 
+    def load_config(self, config=None):
+        if not config:
+            config = self.config_file
+        with open(config, 'r') as f:
+            return json.load(f)
+
     def _write_config(self, filepath=None):
         if not filepath:
             filepath = self.config_file
@@ -131,7 +137,7 @@ class Strumpf:
     def set_config(self, config):
         self.config.update(config)
         self._write_config()
-        # TODO write project specific file
+        self._write_config(os.path.join(_BASE_DIR, '{}.json'.format(self.get_context_from_config())))
 
     def get_config(self):
         return self.config
@@ -153,9 +159,11 @@ class Strumpf:
         if config is None:
             config = self.config
 
-    def _get_all_contexts(self):
-        c = os.listdir(_BASE_DIR)
-        return [x for x in c if x.startswith('strumpf')]
+    def get_all_contexts(self):
+        base_files = os.listdir(_BASE_DIR)
+        json_files = [x for x in base_files if x.endswith(".json")]
+        json_files.remove('config.json')
+        return [j.replace('.json', '') for j in json_files]
 
     def get_total_file_size(self):
         local_dir = self.get_local_resource_dir()
