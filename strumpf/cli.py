@@ -67,8 +67,7 @@ class CLI(object):
         subparsers.add_parser('status', help='Get strumpf status.')
         file_add_parser = subparsers.add_parser(
             'add', help='Add files to strumpf tracking system.')
-        file_add_parser.add_argument(
-            '-p', '--path', help='Path or file to add to upload.')
+        file_add_parser.add_argument('path', type=str, nargs='?', help='Path or file to add to upload.')
 
         subparsers.add_parser('upload', help='Upload files to remote source.')
 

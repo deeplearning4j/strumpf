@@ -72,8 +72,8 @@ strumpf status
 
 ```
 
-Next, to add files to strumpf tracking system you use `strumpf add -p <file or path>`, to track all
-large files recently added in your test folder you could for instance issue the command `strumpf add -p .`.
+Next, to add files to strumpf tracking system you use `strumpf add <file or path>`, to track all
+large files recently added in your test folder you could for instance issue the command `strumpf add .`.
 All files should be added relative to the test folder you're working with.
 
 To see the effect of adding files you can query the status afterwards again to see that your previously untracked or modified files are now staged for upload by strumpf.
