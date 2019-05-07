@@ -60,26 +60,6 @@ def get_reference_and_version(ref_file_name):
     return ref, current_version
 
 
-def compute_and_store_hash(file_name):
-    ref, version = get_reference_and_version(file_name + REF)
-    new_version = version + 1
-    ref['current_version'] = new_version
-
-    f_hash = hash_bytestr_iter(file_as_blockiter(
-        open(file_name, 'rb')), hashlib.sha256())
-    gzip_hash = hash_bytestr_iter(file_as_blockiter(
-        open(file_name + ZIP, 'rb')), hashlib.sha256())
-    hashes = {
-        file_name + '_hash': f_hash,
-        file_name + '_compressed_hash': gzip_hash
-    }
-    version_hash = {'v' + str(new_version): hashes}
-    ref.update(version_hash)
-
-    with open(file_name + REF, 'w') as ref_file:
-        json.dump(ref, ref_file)
-
-
 def hash_bytestr_iter(bytesiter, hasher, ashexstr=True):
     for block in bytesiter:
         hasher.update(block)
@@ -253,7 +233,29 @@ class Strumpf:
     def compute_and_store_hashes(self):
         files = self.get_staged_files()
         for file_name in files:
-            compute_and_store_hash(file_name)
+            self.compute_and_store_hash(file_name)
+
+    def compute_and_store_hash(self, file_name):
+        ref, version = get_reference_and_version(file_name + REF)
+        new_version = version + 1
+        ref['current_version'] = new_version
+
+        f_hash = hash_bytestr_iter(file_as_blockiter(
+            open(file_name, 'rb')), hashlib.sha256())
+        gzip_hash = hash_bytestr_iter(file_as_blockiter(
+            open(file_name + ZIP, 'rb')), hashlib.sha256())
+        local_dir = self.get_local_resource_dir()
+        rel_name = os.path.relpath(file_name, local_dir)
+        hashes = {
+            rel_name + '_hash': f_hash,
+            rel_name + '_compressed_hash': gzip_hash
+        }
+        version_hash = {'v' + str(new_version): hashes}
+        ref.update(version_hash)
+
+        with open(file_name + REF, 'w') as ref_file:
+            json.dump(ref, ref_file)
+
 
     def service_from_config(self):
         name = self.config['azure_account_name']
@@ -291,8 +293,8 @@ class Strumpf:
                     versioned_name = name + '.v' + str(version)
 
                     if versioned_name in blobs:
-                        confirm = input("File {} already available on Azure,".format(name) +
-                                        "are you sure you want to override it? (default 'n') [y/n]: ") or 'yes'
+                        confirm = input("File {} already available on Azure,".format(versioned_name) +
+                                        "are you sure you want to override it? [y/n]: ") or 'yes'
                         upload = to_bool(confirm)
                     if upload:
                         print('   >>> uploading file {}, version {}'.format(
