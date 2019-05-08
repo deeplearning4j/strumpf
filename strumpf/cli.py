@@ -98,7 +98,7 @@ class CLI(object):
 
         self.command = args.command
 
-        if self.command is not 'configure' and 'project_name' not in self.config.keys():
+        if self.command != 'configure' and 'project_name' not in self.config.keys():
             raise Exception(
                 "Can't run this command.\nNo project name found. Did you run 'strumpf configure' before?")
 
@@ -179,9 +179,6 @@ class CLI(object):
             'local_resource_folder': local_resource_folder,
             'cache_directory': os.path.join(_BASE_DIR, project_name)
         }
-
-        self.strumpf.validate_config(cli_out)
-
         formatted_json = json.dumps(cli_out, sort_keys=False, indent=2)
 
         click.echo("\nThis is your current settings file " +
@@ -195,8 +192,13 @@ class CLI(object):
                 "" + click.style("Please initialize strumpf once again", fg="red", bold=True))
             return
 
+        click.echo("Running validation...")
         self.strumpf.set_config(cli_out)
+        if not os.path.isdir(local_resource_folder):
+            raise Exception("The provided resource folder {} can not be found on your system. Please run 'strumpf configure' again.".format(local_resource_folder))
+        service = self.strumpf.service_from_config()
         set_context(self.strumpf.get_context_from_config())
+        click.echo("Validation passed.")
 
     def status(self):
         click.echo('>>> Working on project {}'.format(

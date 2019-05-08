@@ -275,8 +275,8 @@ class Strumpf:
         container = self.config['container_name']
         try:
             service = Service(name, key, container)
-        except RuntimeError:
-            raise 'Could not establish Azure connection. Are your credentials valid?'
+        except Exception:
+            raise Exception("Could not establish Azure connection. Are your credentials valid? Run 'strumpf configure' again with proper credentials.")
         return Service(name, key, container)
 
     def upload_compressed_files(self):
