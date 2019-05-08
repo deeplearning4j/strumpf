@@ -94,6 +94,9 @@ class CLI(object):
 
         self.command = args.command
 
+        if self.command is not 'configure' and 'project_name' not in self.config.keys():
+            raise Exception("Can't run this command.\nNo project name found. Did you run 'strumpf configure' before?")
+
         if self.command == 'configure':
             self.configure()
             return

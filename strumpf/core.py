@@ -91,7 +91,7 @@ class Strumpf:
             'file_size_limit_in_mb': '1',
             'container_name': 'resources'
         }
-
+        
         if os.path.isfile(self.stage_file):
             with open(self.stage_file, 'r') as f:
                 staged_files = f.readlines()
@@ -153,7 +153,11 @@ class Strumpf:
         return self.config['cache_directory']
 
     def get_context_from_config(self):
-        return self.config['project_name']
+        if 'project_name' in self.config.keys():
+            return self.config['project_name']
+        else:
+            raise Exception("No project name found. Did you run 'strumpf configure' before?")
+        
 
     def validate_config(self, config=None):
         if config is None:
