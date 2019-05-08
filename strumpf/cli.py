@@ -263,15 +263,26 @@ class CLI(object):
                 self.strumpf.add_path(path)
 
     def upload(self):
+
+        aborting = False
         print('>>> Compressing staged files')
         self.strumpf.compress_staged_files()
         print('>>> Computing SHA256 hashes for large files')
         self.strumpf.compute_and_store_hashes()
         print('>>> Uploading compressed files')
-        self.strumpf.upload_compressed_files()
-        print('>>> Caching large files locally and deleting them from resource folder')
-        self.strumpf.cache_and_delete()
-        print('>>> Remove files from staging environment.')
+        try:
+            self.strumpf.upload_compressed_files()
+        except Exception:
+            print(">>> Strumpf file upload failed or was interrupted. Aborting...")
+            aborting = True
+        
+        if aborting:
+            print('>>> Upload aborted. Removing zip files and references.')
+            self.strumpf.roll_back()
+        else:
+            print('>>> Caching large files locally and deleting them from resource folder')
+            self.strumpf.cache_and_delete()
+        print('>>> Removing files from staging environment.')
         self.strumpf.clear_staging()
 
     def download(self, file_name):

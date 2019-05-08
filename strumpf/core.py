@@ -317,6 +317,20 @@ class Strumpf:
                             ZIP, REF), full_path.replace(ZIP, REF))
         print('>>> Upload finished')
 
+    def roll_back(self):
+        staged = self.get_staged_files()
+        local_dir = self.get_local_resource_dir()
+        cache_dir = self.get_cache_dir()
+        mkdir(cache_dir)
+        for source_dir, dirs, files in os.walk(local_dir):
+            for file_name in files:
+                src_file = os.path.join(source_dir, file_name)
+                dst_file = os.path.join(dest_dir, file_name)
+                if src_file in staged:
+                    # remove zipped files
+                    os.remove(src_file + ZIP)
+                    os.remove(src_file + REF)
+
     def cache_and_delete(self):
         staged = self.get_staged_files()
         local_dir = self.get_local_resource_dir()
