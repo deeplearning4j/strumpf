@@ -91,7 +91,7 @@ class Strumpf:
             'file_size_limit_in_mb': '1',
             'container_name': 'resources'
         }
-        
+
         if os.path.isfile(self.stage_file):
             with open(self.stage_file, 'r') as f:
                 staged_files = f.readlines()
@@ -137,7 +137,8 @@ class Strumpf:
     def set_config(self, config):
         self.config.update(config)
         self._write_config()
-        self._write_config(os.path.join(_BASE_DIR, '{}.json'.format(self.get_context_from_config())))
+        self._write_config(os.path.join(
+            _BASE_DIR, '{}.json'.format(self.get_context_from_config())))
 
     def get_config(self):
         return self.config
@@ -156,8 +157,8 @@ class Strumpf:
         if 'project_name' in self.config.keys():
             return self.config['project_name']
         else:
-            raise Exception("No project name found. Did you run 'strumpf configure' before?")
-        
+            raise Exception(
+                "No project name found. Did you run 'strumpf configure' before?")
 
     def validate_config(self, config=None):
         if config is None:
@@ -220,7 +221,8 @@ class Strumpf:
         local_dir = self.get_local_resource_dir()
         full_file_path = self.full_path(file_path)
         if not os.path.isfile(full_file_path):
-            raise Exception("Could not find local resource {} in resource folder {}, aborting".format(full_file_path, local_dir))  
+            raise Exception("Could not find local resource {} in resource folder {}, aborting".format(
+                full_file_path, local_dir))
         limit = self.get_limit_in_bytes()
         size = os.path.getsize(full_file_path)
         if size > limit:
@@ -266,7 +268,6 @@ class Strumpf:
 
         with open(file_name + REF, 'w') as ref_file:
             json.dump(ref, ref_file)
-
 
     def service_from_config(self):
         name = self.config['azure_account_name']

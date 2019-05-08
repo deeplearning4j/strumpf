@@ -67,7 +67,8 @@ class CLI(object):
         subparsers.add_parser('status', help='Get strumpf status.')
         file_add_parser = subparsers.add_parser(
             'add', help='Add files to strumpf tracking system.')
-        file_add_parser.add_argument('path', type=str, nargs='+', help='Path or file to add to upload.')
+        file_add_parser.add_argument(
+            'path', type=str, nargs='+', help='Path or file to add to upload.')
 
         subparsers.add_parser('upload', help='Upload files to remote source.')
 
@@ -79,10 +80,13 @@ class CLI(object):
 
         subparsers.add_parser('reset', help='Reset previously staged files.')
         subparsers.add_parser('blobs', help='List all relevant Azure blobs.')
-        subparsers.add_parser('projects', help='List all projects tracked by Strumpf.')
+        subparsers.add_parser(
+            'projects', help='List all projects tracked by Strumpf.')
 
-        project_parser = subparsers.add_parser('set_project', help='Set a project tracked by Strumpf as default.')
-        project_parser.add_argument('project', type=str, nargs='?', help='The project you want to set.')
+        project_parser = subparsers.add_parser(
+            'set_project', help='Set a project tracked by Strumpf as default.')
+        project_parser.add_argument(
+            'project', type=str, nargs='?', help='The project you want to set.')
 
         argcomplete.autocomplete(parser)
         args = parser.parse_args(args)
@@ -95,7 +99,8 @@ class CLI(object):
         self.command = args.command
 
         if self.command is not 'configure' and 'project_name' not in self.config.keys():
-            raise Exception("Can't run this command.\nNo project name found. Did you run 'strumpf configure' before?")
+            raise Exception(
+                "Can't run this command.\nNo project name found. Did you run 'strumpf configure' before?")
 
         if self.command == 'configure':
             self.configure()
@@ -147,7 +152,8 @@ class CLI(object):
         click.echo(click.style("strumpf", bold=True) +
                    " is Skymind's test resource management tool for exceedingly large files!\n")
 
-        project_name = input("What's the name of this project? You can address existing projects by name: ")
+        project_name = input(
+            "What's the name of this project? You can address existing projects by name: ")
 
         account_name = input("Specify tour Azure storage account name (default '%s'): " %
                              self.default_account_name) or self.default_account_name
@@ -193,7 +199,8 @@ class CLI(object):
         set_context(self.strumpf.get_context_from_config())
 
     def status(self):
-        click.echo('>>> Working on project {}'.format((self.strumpf.get_context_from_config())))
+        click.echo('>>> Working on project {}'.format(
+            (self.strumpf.get_context_from_config())))
 
         large_files = self.strumpf.get_large_files()
         tracked_files = self.strumpf.get_tracked_files()
@@ -292,9 +299,11 @@ class CLI(object):
     def set_project(self, project):
         projects = self.strumpf.get_all_contexts()
         if project not in projects:
-            raise Exception("Project {} not found. Make sure the project you want is listed by 'strumpf projects'".format(project))
+            raise Exception(
+                "Project {} not found. Make sure the project you want is listed by 'strumpf projects'".format(project))
 
-        config = self.strumpf.load_config(os.path.join(_BASE_DIR, '{}.json'.format(project)))
+        config = self.strumpf.load_config(
+            os.path.join(_BASE_DIR, '{}.json'.format(project)))
         self.strumpf.set_config(config)
         set_context(self.strumpf.get_context_from_config())
 
