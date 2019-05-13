@@ -137,7 +137,8 @@ class Strumpf:
     def set_config(self, config):
         self.config.update(config)
         self._write_config()
-        self._write_config(os.path.join(_BASE_DIR, '{}.json'.format(self.get_context_from_config())))
+        self._write_config(os.path.join(
+            _BASE_DIR, '{}.json'.format(self.get_context_from_config())))
 
     def get_config(self):
         return self.config
@@ -153,7 +154,11 @@ class Strumpf:
         return self.config['cache_directory']
 
     def get_context_from_config(self):
-        return self.config['project_name']
+        if 'project_name' in self.config.keys():
+            return self.config['project_name']
+        else:
+            raise Exception(
+                "No project name found. Did you run 'strumpf configure' before?")
 
     def validate_config(self, config=None):
         if config is None:
@@ -216,7 +221,8 @@ class Strumpf:
         local_dir = self.get_local_resource_dir()
         full_file_path = self.full_path(file_path)
         if not os.path.isfile(full_file_path):
-            raise Exception("Could not find local resource {} in resource folder {}, aborting".format(full_file_path, local_dir))  
+            raise Exception("Could not find local resource {} in resource folder {}, aborting".format(
+                full_file_path, local_dir))
         limit = self.get_limit_in_bytes()
         size = os.path.getsize(full_file_path)
         if size > limit:
@@ -253,7 +259,13 @@ class Strumpf:
             open(file_name + ZIP, 'rb')), hashlib.sha256())
         local_dir = self.get_local_resource_dir()
         rel_name = os.path.relpath(file_name, local_dir)
+
+        azure_base = 'https://{}.blob.core.windows.net/{}'.format(self.config['azure_account_name'], self.config['container_name'])
+        full_remote_path = os.path.join(azure_base, rel_name)
+        full_remote_path += ZIP + '.v' + str(new_version)
+
         hashes = {
+            'full_remote_path': full_remote_path,
             rel_name + '_hash': f_hash,
             rel_name + '_compressed_hash': gzip_hash
         }
@@ -263,15 +275,14 @@ class Strumpf:
         with open(file_name + REF, 'w') as ref_file:
             json.dump(ref, ref_file)
 
-
     def service_from_config(self):
         name = self.config['azure_account_name']
         key = self.config['azure_account_key']
         container = self.config['container_name']
         try:
             service = Service(name, key, container)
-        except RuntimeError:
-            raise 'Could not establish Azure connection. Are your credentials valid?'
+        except Exception:
+            raise Exception("Could not establish Azure connection. Are your credentials valid? Run 'strumpf configure' again with proper credentials.")
         return Service(name, key, container)
 
     def upload_compressed_files(self):
@@ -311,6 +322,20 @@ class Strumpf:
                         service.upload_blob(name.replace(
                             ZIP, REF), full_path.replace(ZIP, REF))
         print('>>> Upload finished')
+
+    def roll_back(self):
+        staged = self.get_staged_files()
+        local_dir = self.get_local_resource_dir()
+        cache_dir = self.get_cache_dir()
+        mkdir(cache_dir)
+        for source_dir, dirs, files in os.walk(local_dir):
+            for file_name in files:
+                src_file = os.path.join(source_dir, file_name)
+                dst_file = os.path.join(dest_dir, file_name)
+                if src_file in staged:
+                    # remove zipped files
+                    os.remove(src_file + ZIP)
+                    os.remove(src_file + REF)
 
     def cache_and_delete(self):
         staged = self.get_staged_files()

@@ -67,7 +67,8 @@ class CLI(object):
         subparsers.add_parser('status', help='Get strumpf status.')
         file_add_parser = subparsers.add_parser(
             'add', help='Add files to strumpf tracking system.')
-        file_add_parser.add_argument('path', type=str, nargs='+', help='Path or file to add to upload.')
+        file_add_parser.add_argument(
+            'path', type=str, nargs='+', help='Path or file to add to upload.')
 
         subparsers.add_parser('upload', help='Upload files to remote source.')
 
@@ -79,10 +80,13 @@ class CLI(object):
 
         subparsers.add_parser('reset', help='Reset previously staged files.')
         subparsers.add_parser('blobs', help='List all relevant Azure blobs.')
-        subparsers.add_parser('projects', help='List all projects tracked by Strumpf.')
+        subparsers.add_parser(
+            'projects', help='List all projects tracked by Strumpf.')
 
-        project_parser = subparsers.add_parser('set_project', help='Set a project tracked by Strumpf as default.')
-        project_parser.add_argument('project', type=str, nargs='?', help='The project you want to set.')
+        project_parser = subparsers.add_parser(
+            'set_project', help='Set a project tracked by Strumpf as default.')
+        project_parser.add_argument(
+            'project', type=str, nargs='?', help='The project you want to set.')
 
         argcomplete.autocomplete(parser)
         args = parser.parse_args(args)
@@ -93,6 +97,10 @@ class CLI(object):
             return
 
         self.command = args.command
+
+        if self.command != 'configure' and 'project_name' not in self.config.keys():
+            raise Exception(
+                "Can't run this command.\nNo project name found. Did you run 'strumpf configure' before?")
 
         if self.command == 'configure':
             self.configure()
@@ -144,7 +152,8 @@ class CLI(object):
         click.echo(click.style("strumpf", bold=True) +
                    " is Skymind's test resource management tool for exceedingly large files!\n")
 
-        project_name = input("What's the name of this project? You can address existing projects by name: ")
+        project_name = input(
+            "What's the name of this project? You can address existing projects by name: ")
 
         account_name = input("Specify tour Azure storage account name (default '%s'): " %
                              self.default_account_name) or self.default_account_name
@@ -170,9 +179,6 @@ class CLI(object):
             'local_resource_folder': local_resource_folder,
             'cache_directory': os.path.join(_BASE_DIR, project_name)
         }
-
-        self.strumpf.validate_config(cli_out)
-
         formatted_json = json.dumps(cli_out, sort_keys=False, indent=2)
 
         click.echo("\nThis is your current settings file " +
@@ -186,11 +192,17 @@ class CLI(object):
                 "" + click.style("Please initialize strumpf once again", fg="red", bold=True))
             return
 
+        click.echo("Running validation...")
         self.strumpf.set_config(cli_out)
+        if not os.path.isdir(local_resource_folder):
+            raise Exception("The provided resource folder {} can not be found on your system. Please run 'strumpf configure' again.".format(local_resource_folder))
+        service = self.strumpf.service_from_config()
         set_context(self.strumpf.get_context_from_config())
+        click.echo("Validation passed.")
 
     def status(self):
-        click.echo('>>> Working on project {}'.format((self.strumpf.get_context_from_config())))
+        click.echo('>>> Working on project {}'.format(
+            (self.strumpf.get_context_from_config())))
 
         large_files = self.strumpf.get_large_files()
         tracked_files = self.strumpf.get_tracked_files()
@@ -251,15 +263,25 @@ class CLI(object):
                 self.strumpf.add_path(path)
 
     def upload(self):
+        aborting = False
         print('>>> Compressing staged files')
         self.strumpf.compress_staged_files()
         print('>>> Computing SHA256 hashes for large files')
         self.strumpf.compute_and_store_hashes()
         print('>>> Uploading compressed files')
-        self.strumpf.upload_compressed_files()
-        print('>>> Caching large files locally and deleting them from resource folder')
-        self.strumpf.cache_and_delete()
-        print('>>> Remove files from staging environment.')
+        try:
+            self.strumpf.upload_compressed_files()
+        except Exception:
+            print(">>> Strumpf file upload failed or was interrupted. Aborting...")
+            aborting = True
+        
+        if aborting:
+            print('>>> Upload aborted. Removing zip files and references.')
+            self.strumpf.roll_back()
+        else:
+            print('>>> Caching large files locally and deleting them from resource folder')
+            self.strumpf.cache_and_delete()
+        print('>>> Removing files from staging environment.')
         self.strumpf.clear_staging()
 
     def download(self, file_name):
@@ -273,6 +295,7 @@ class CLI(object):
         service.bulk_download(self.strumpf.get_cache_dir())
 
     def reset(self):
+        self.strumpf.roll_back()
         self.strumpf.clear_staging()
 
     def blobs(self):
@@ -289,9 +312,11 @@ class CLI(object):
     def set_project(self, project):
         projects = self.strumpf.get_all_contexts()
         if project not in projects:
-            raise Exception("Project {} not found. Make sure the project you want is listed by 'strumpf projects'".format(project))
+            raise Exception(
+                "Project {} not found. Make sure the project you want is listed by 'strumpf projects'".format(project))
 
-        config = self.strumpf.load_config(os.path.join(_BASE_DIR, '{}.json'.format(project)))
+        config = self.strumpf.load_config(
+            os.path.join(_BASE_DIR, '{}.json'.format(project)))
         self.strumpf.set_config(config)
         set_context(self.strumpf.get_context_from_config())
 
