@@ -263,7 +263,6 @@ class CLI(object):
                 self.strumpf.add_path(path)
 
     def upload(self):
-
         aborting = False
         print('>>> Compressing staged files')
         self.strumpf.compress_staged_files()
@@ -296,6 +295,7 @@ class CLI(object):
         service.bulk_download(self.strumpf.get_cache_dir())
 
     def reset(self):
+        self.strumpf.roll_back()
         self.strumpf.clear_staging()
 
     def blobs(self):
