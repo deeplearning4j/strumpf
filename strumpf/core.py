@@ -259,7 +259,13 @@ class Strumpf:
             open(file_name + ZIP, 'rb')), hashlib.sha256())
         local_dir = self.get_local_resource_dir()
         rel_name = os.path.relpath(file_name, local_dir)
+
+        azure_base = 'https://{}.blob.core.windows.net/{}'.format(self.config['azure_account_name'], self.config['container_name'])
+        full_remote_path = os.path.join(azure_base, rel_name)
+        full_remote_path += ZIP + '.v' + str(new_version)
+
         hashes = {
+            'full_remote_path': full_remote_path,
             rel_name + '_hash': f_hash,
             rel_name + '_compressed_hash': gzip_hash
         }
