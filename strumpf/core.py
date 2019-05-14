@@ -265,6 +265,8 @@ class Strumpf:
         azure_base = 'https://{}.blob.core.windows.net/{}'.format(self.config['azure_account_name'], self.config['container_name'])
         full_remote_path = os.path.join(azure_base, rel_name)
         full_remote_path += ZIP + '.v' + str(new_version)
+        full_remote_path = full_remote_path.replace("\\","/")
+
 
         hashes = {
             'full_remote_path': full_remote_path,
