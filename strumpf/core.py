@@ -376,7 +376,6 @@ class Strumpf:
 
 
 class Service:
-    # TODO: proper azure logging?
 
     def __init__(self, account_name, account_key, container_name):
         self.account_name = account_name
