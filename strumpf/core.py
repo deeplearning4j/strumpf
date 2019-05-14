@@ -34,6 +34,11 @@ REF = ".resource_reference"
 ZIP = ".gzx"
 
 
+def join(base, extension):
+    path = os.path.join(base, extension)
+    return path.replace('\\', '/')
+
+
 def mkdir(directory):
     if not os.path.exists(directory):
         os.mkdir(directory)
@@ -83,9 +88,9 @@ def to_bool(string):
 class Strumpf:
 
     def __init__(self):
-        self.stage_file = os.path.join(_BASE_DIR, 'stage.txt')
+        self.stage_file = join(_BASE_DIR, 'stage.txt')
         self.stage_data = set()
-        self.config_file = os.path.join(_BASE_DIR, 'config.json')
+        self.config_file = join(_BASE_DIR, 'config.json')
         self.config = {
             'azure_account_name': 'dl4jtestresources',
             'file_size_limit_in_mb': '1',
@@ -137,8 +142,8 @@ class Strumpf:
     def set_config(self, config):
         self.config.update(config)
         self._write_config()
-        self._write_config(os.path.join(
-            _BASE_DIR, '{}.json'.format(self.get_context_from_config())))
+        self._write_config(
+            join(_BASE_DIR, '{}.json'.format(self.get_context_from_config())))
 
     def get_config(self):
         return self.config
@@ -148,10 +153,12 @@ class Strumpf:
         return float(limit) * 1024 * 1024
 
     def get_local_resource_dir(self):
-        return self.config['local_resource_folder']
+        folder = self.config['local_resource_folder']
+        return folder.replace('\\', '/')
 
     def get_cache_dir(self):
-        return self.config['cache_directory']
+        cache_dir = self.config['cache_directory']
+        return cache_dir.replace('\\', '/')
 
     def get_context_from_config(self):
         if 'project_name' in self.config.keys():
@@ -175,7 +182,7 @@ class Strumpf:
         sizes = []
         for path, _, filenames in os.walk(local_dir):
             for name in filenames:
-                full_path = os.path.join(path, name)
+                full_path = join(path, name)
                 sizes.append(os.path.getsize(full_path))
         return sum(sizes), len(sizes)
 
@@ -188,7 +195,7 @@ class Strumpf:
         limit = self.get_limit_in_bytes()
         for path, _, filenames in os.walk(local_dir):
             for name in filenames:
-                full_path = os.path.join(path, name)
+                full_path = join(path, name)
                 size = os.path.getsize(full_path)
                 if size > limit:
                     large_files.append((full_path, size))
@@ -198,10 +205,10 @@ class Strumpf:
         tracked_files = []
         local_dir = self.get_local_resource_dir()
         if relative_path:
-            local_dir = os.path.join(local_dir, relative_path)
+            local_dir = join(local_dir, relative_path)
         for path, _, filenames in os.walk(local_dir):
             for name in filenames:
-                full_path = os.path.join(path, name)
+                full_path = join(path, name)
                 if full_path.endswith(REF):
                     original_file = full_path.replace(REF, "")
                     tracked_files.append(original_file)
@@ -210,7 +217,7 @@ class Strumpf:
     def full_path(self, path):
         local_dir = self.get_local_resource_dir()
         if local_dir not in path:
-            path = os.path.join(local_dir, path)
+            path = join(local_dir, path)
         return path
 
     def is_file(self, path):
@@ -225,14 +232,14 @@ class Strumpf:
                 full_file_path, local_dir))
         limit = self.get_limit_in_bytes()
         size = os.path.getsize(full_file_path)
-        full_file_path = full_file_path.replace("\\","/")
+        full_file_path = full_file_path.replace("\\", "/")
         if size > limit:
             self.stage_data = self.stage_data | set([full_file_path])
             self._write_stage_files()
 
     def add_path(self, path):
         path = os.path.abspath(path)
-        path = path.replace("\\","/")
+        path = path.replace("\\", "/")
         large_files = self.get_large_files(path)
         large_files = [f[0] for f in large_files]
         self.stage_data = self.stage_data | set(large_files)
@@ -260,13 +267,13 @@ class Strumpf:
             open(file_name + ZIP, 'rb')), hashlib.sha256())
         local_dir = self.get_local_resource_dir()
         rel_name = os.path.relpath(file_name, local_dir)
-        rel_name = rel_name.replace("\\","/")
+        rel_name = rel_name.replace("\\", "/")
 
-        azure_base = 'https://{}.blob.core.windows.net/{}'.format(self.config['azure_account_name'], self.config['container_name'])
-        full_remote_path = os.path.join(azure_base, rel_name)
+        azure_base = 'https://{}.blob.core.windows.net/{}'.format(
+            self.config['azure_account_name'], self.config['container_name'])
+        full_remote_path = join(azure_base, rel_name)
         full_remote_path += ZIP + '.v' + str(new_version)
-        full_remote_path = full_remote_path.replace("\\","/")
-
+        full_remote_path = full_remote_path.replace("\\", "/")
 
         hashes = {
             'full_remote_path': full_remote_path,
@@ -286,7 +293,8 @@ class Strumpf:
         try:
             service = Service(name, key, container)
         except Exception:
-            raise Exception("Could not establish Azure connection. Are your credentials valid? Run 'strumpf configure' again with proper credentials.")
+            raise Exception(
+                "Could not establish Azure connection. Are your credentials valid? Run 'strumpf configure' again with proper credentials.")
         return Service(name, key, container)
 
     def upload_compressed_files(self):
@@ -305,7 +313,7 @@ class Strumpf:
         for path, _, file_names in os.walk(local_dir):
             for name in file_names:
                 if name.endswith(ZIP):
-                    full_path = os.path.join(path, name)
+                    full_path = join(path, name)
                     ref_path = full_path.replace(ZIP, REF)
                     ref, version = get_reference_and_version(ref_path)
 
@@ -334,8 +342,8 @@ class Strumpf:
         mkdir(cache_dir)
         for source_dir, dirs, files in os.walk(local_dir):
             for file_name in files:
-                src_file = os.path.join(source_dir, file_name)
-                dst_file = os.path.join(dest_dir, file_name)
+                src_file = join(source_dir, file_name)
+                dst_file = join(dest_dir, file_name)
                 if src_file in staged:
                     # remove zipped files
                     os.remove(src_file + ZIP)
@@ -350,8 +358,8 @@ class Strumpf:
             dest_dir = source_dir.replace(local_dir, cache_dir)
             mkdir(dest_dir)
             for file_name in files:
-                src_file = os.path.join(source_dir, file_name)
-                dst_file = os.path.join(dest_dir, file_name)
+                src_file = join(source_dir, file_name)
+                dst_file = join(dest_dir, file_name)
                 if src_file in staged:
                     # move original file to cache
                     os.rename(src_file, dst_file)
@@ -367,7 +375,7 @@ class Strumpf:
     def _clear_cache(self):
         cache_dir = self.get_cache_dir()
         for file_name in os.listdir(cache_dir):
-            file_path = os.path.join(cache_dir, file_name)
+            file_path = join(cache_dir, file_name)
             try:
                 if os.path.isfile(file_path):
                     os.unlink(file_path)
@@ -413,22 +421,23 @@ class Service:
     def download_blob(self, original_file_name, local_path):
 
         # download zipped version and file reference
+        original_file_name = original_file_name.replace('\\', '/')
         ref_name = original_file_name + REF
         file_name = original_file_name + ZIP
 
         if not self.strumpf:
             self.strumpf = Strumpf()
         local_res_dir = self.strumpf.get_local_resource_dir()
-        ref_location = os.path.join(local_res_dir, ref_name)
-        download_location = os.path.join(local_path, file_name)
+        ref_location = join(local_res_dir, ref_name)
+        download_location = join(local_path, file_name)
         ref, version = get_reference_and_version(ref_location)
         str_version = 'v' + str(version)
 
-        if os.sep in file_name:
-            parts = file_name.split(os.sep)[:-1]
+        if '/' in file_name:
+            parts = file_name.split('/')[:-1]
             temp_path = local_path
             for part in parts:
-                temp_path = os.path.join(temp_path, part)
+                temp_path = join(temp_path, part)
                 # Note: Azure automatically creates subfolders, Python doesn't.
                 # we need to carefully create them first.
                 mkdir(temp_path)
@@ -440,7 +449,7 @@ class Service:
             with open(ref_location, 'r') as ref_file:
                 dup_ref = json.loads(ref_file.read())
             local_resource_path = self.strumpf.get_local_resource_dir()
-            original_ref_location = os.path.join(local_resource_path, ref_name)
+            original_ref_location = join(local_resource_path, ref_name)
             with open(original_ref_location, 'r') as original_file:
                 original_ref = json.loads(original_file.read())
             if original_ref[str_version] == dup_ref[str_version]:

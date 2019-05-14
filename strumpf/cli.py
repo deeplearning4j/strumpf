@@ -195,7 +195,8 @@ class CLI(object):
         click.echo("Running validation...")
         self.strumpf.set_config(cli_out)
         if not os.path.isdir(local_resource_folder):
-            raise Exception("The provided resource folder {} can not be found on your system. Please run 'strumpf configure' again.".format(local_resource_folder))
+            raise Exception("The provided resource folder {} can not be found on your system. Please run 'strumpf configure' again.".format(
+                local_resource_folder))
         service = self.strumpf.service_from_config()
         set_context(self.strumpf.get_context_from_config())
         click.echo("Validation passed.")
@@ -274,12 +275,13 @@ class CLI(object):
         except Exception:
             print(">>> Strumpf file upload failed or was interrupted. Aborting...")
             aborting = True
-        
+
         if aborting:
             print('>>> Upload aborted. Removing zip files and references.')
             self.strumpf.roll_back()
         else:
-            print('>>> Caching large files locally and deleting them from resource folder')
+            print(
+                '>>> Caching large files locally and deleting them from resource folder')
             self.strumpf.cache_and_delete()
         print('>>> Removing files from staging environment.')
         self.strumpf.clear_staging()
