@@ -225,13 +225,14 @@ class Strumpf:
                 full_file_path, local_dir))
         limit = self.get_limit_in_bytes()
         size = os.path.getsize(full_file_path)
+        full_file_path = full_file_path.replace("\\","/")
         if size > limit:
             self.stage_data = self.stage_data | set([full_file_path])
             self._write_stage_files()
 
     def add_path(self, path):
-        print(path)
         path = os.path.abspath(path)
+        path = path.replace("\\","/")
         large_files = self.get_large_files(path)
         large_files = [f[0] for f in large_files]
         self.stage_data = self.stage_data | set(large_files)
@@ -259,6 +260,7 @@ class Strumpf:
             open(file_name + ZIP, 'rb')), hashlib.sha256())
         local_dir = self.get_local_resource_dir()
         rel_name = os.path.relpath(file_name, local_dir)
+        rel_name = rel_name.replace("\\","/")
 
         azure_base = 'https://{}.blob.core.windows.net/{}'.format(self.config['azure_account_name'], self.config['container_name'])
         full_remote_path = os.path.join(azure_base, rel_name)
