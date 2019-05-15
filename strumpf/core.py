@@ -354,6 +354,7 @@ class Strumpf:
         cache_dir = self.get_cache_dir()
         mkdir(cache_dir)
         for source_dir, dirs, files in os.walk(local_dir):
+            source_dir = source_dir.replace("\\", "/")
             dest_dir = source_dir.replace(local_dir, cache_dir)
             mkdir(dest_dir)
             for file_name in files:
