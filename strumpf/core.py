@@ -343,7 +343,6 @@ class Strumpf:
         for source_dir, dirs, files in os.walk(local_dir):
             for file_name in files:
                 src_file = join(source_dir, file_name)
-                dst_file = join(dest_dir, file_name)
                 if src_file in staged:
                     # remove zipped files
                     os.remove(src_file + ZIP)
