@@ -362,6 +362,8 @@ class Strumpf:
                 dst_file = join(dest_dir, file_name)
                 if src_file in staged:
                     # move original file to cache
+                    if os.path.exists(dst_file):
+                        os.remove(dst_file)
                     os.rename(src_file, dst_file)
                     # remove zipped files
                     os.remove(src_file + ZIP)
