@@ -3,7 +3,7 @@ from setuptools import find_packages
 
 setup(
     name='strumpf',
-    version='0.3.4',
+    version='0.3.5',
     packages=find_packages(),
     install_requires=['azure', 'requests', 'click', 'argcomplete'],
     extras_require={
