@@ -343,7 +343,6 @@ class Strumpf:
         for source_dir, dirs, files in os.walk(local_dir):
             for file_name in files:
                 src_file = join(source_dir, file_name)
-                dst_file = join(dest_dir, file_name)
                 if src_file in staged:
                     # remove zipped files
                     os.remove(src_file + ZIP)
@@ -355,6 +354,7 @@ class Strumpf:
         cache_dir = self.get_cache_dir()
         mkdir(cache_dir)
         for source_dir, dirs, files in os.walk(local_dir):
+            source_dir = source_dir.replace("\\", "/")
             dest_dir = source_dir.replace(local_dir, cache_dir)
             mkdir(dest_dir)
             for file_name in files:
@@ -362,6 +362,8 @@ class Strumpf:
                 dst_file = join(dest_dir, file_name)
                 if src_file in staged:
                     # move original file to cache
+                    if os.path.exists(dst_file):
+                        os.remove(dst_file)
                     os.rename(src_file, dst_file)
                     # remove zipped files
                     os.remove(src_file + ZIP)
